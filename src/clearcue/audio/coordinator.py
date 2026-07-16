@@ -40,7 +40,7 @@ class AudioCoordinator:
             ),
             "You": SpeechSegmenter(lambda audio: self.transcriber.submit("You", audio)),
         }
-        self.captures: list[AudioCapture] = []
+        self.captures: dict[str, AudioCapture] = {}
         self._running = False
 
     @property
@@ -51,34 +51,56 @@ class AudioCoordinator:
         if self._running:
             return
         self.transcriber.start()
-        system_capture = AudioCapture(
-            self.config.speaker_id,
-            "loopback",
-            self.config.sample_rate,
-            lambda data: self.segmenters["Interviewer"].feed(data),
-            lambda level: self.on_level("Interviewer", level),
-            self.on_error,
-            self.on_source_state,
-        )
-        microphone_capture = AudioCapture(
-            self.config.microphone_id,
-            "microphone",
-            self.config.sample_rate,
-            lambda data: self.segmenters["You"].feed(data),
-            lambda level: self.on_level("You", level),
-            self.on_error,
-            self.on_source_state,
-        )
-        self.captures = [system_capture, microphone_capture]
-        for capture in self.captures:
-            capture.start()
         self._running = True
+        if self.config.speaker_enabled:
+            self.set_source_enabled("loopback", True)
+        else:
+            self.on_source_state("loopback", False, "Meeting audio disabled")
+        if self.config.microphone_enabled:
+            self.set_source_enabled("microphone", True)
+        else:
+            self.on_source_state("microphone", False, "Microphone disabled")
         self.on_status("Starting audio and fast transcription…")
+
+    def _create_capture(self, kind: str) -> AudioCapture:
+        microphone = kind == "microphone"
+        return AudioCapture(
+            self.config.microphone_id if microphone else self.config.speaker_id,
+            kind,
+            self.config.sample_rate,
+            lambda data: self.segmenters["You" if microphone else "Interviewer"].feed(data),
+            lambda level: self.on_level("You" if microphone else "Interviewer", level),
+            self.on_error,
+            self.on_source_state,
+        )
+
+    def set_source_enabled(self, kind: str, enabled: bool) -> None:
+        if kind not in {"microphone", "loopback"}:
+            raise ValueError(f"Unknown audio source: {kind}")
+        capture = self.captures.get(kind)
+        if enabled:
+            if capture and capture.running:
+                return
+            capture = self._create_capture(kind)
+            self.captures[kind] = capture
+            capture.start()
+            return
+        if capture:
+            capture.stop()
+            self.captures.pop(kind, None)
+        speaker = "You" if kind == "microphone" else "Interviewer"
+        self.segmenters[speaker].flush()
+        self.on_level(speaker, 0.0)
+        self.on_source_state(
+            kind,
+            False,
+            "Microphone disabled" if kind == "microphone" else "Meeting audio disabled",
+        )
 
     def stop(self) -> None:
         if not self._running:
             return
-        for capture in self.captures:
+        for capture in tuple(self.captures.values()):
             capture.stop()
         for segmenter in self.segmenters.values():
             segmenter.flush()

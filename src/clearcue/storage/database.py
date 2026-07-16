@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -96,6 +97,15 @@ class Database:
                     speaker TEXT NOT NULL,
                     text TEXT NOT NULL,
                     is_question INTEGER NOT NULL DEFAULT 0
+                );
+
+                CREATE TABLE IF NOT EXISTS session_answers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+                    created_at TEXT NOT NULL,
+                    question TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    sources_json TEXT NOT NULL DEFAULT '[]'
                 );
                 """
             )
@@ -270,7 +280,48 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def add_session_answer(
+        self,
+        session_id: int,
+        question: str,
+        answer: str,
+        sources: Iterable[str] = (),
+    ) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO session_answers(session_id, created_at, question, answer, sources_json)
+                VALUES(?, ?, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    _now(),
+                    question.strip(),
+                    answer.strip(),
+                    json.dumps(tuple(sources)),
+                ),
+            )
+
+    def session_answers(self, session_id: int) -> list[dict[str, object]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT created_at, question, answer, sources_json
+                FROM session_answers WHERE session_id = ? ORDER BY id
+                """,
+                (session_id,),
+            ).fetchall()
+        answers = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["sources"] = tuple(json.loads(str(item.pop("sources_json"))))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                item["sources"] = ()
+                item.pop("sources_json", None)
+            answers.append(item)
+        return answers
+
     def delete_session(self, session_id: int) -> None:
         with self._connect() as connection:
             connection.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
-

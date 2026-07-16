@@ -3,7 +3,7 @@
 ClearCue is a native Windows interview-practice and disclosed meeting coaching
 assistant written in Python and PySide6. It provides local system-audio capture,
 microphone capture, local speech-to-text, question detection, context retrieval,
-grounded answer generation, a visible always-on-top overlay and local session
+grounded answer generation, a compact always-on-top popup and local session
 history.
 
 See [README_INSTALLATION.md](README_INSTALLATION.md) for the complete Windows
@@ -12,9 +12,10 @@ installation, first-run and troubleshooting guide.
 ## Product boundaries
 
 ClearCue deliberately does not implement screen-capture exclusion, screen-share
-evasion, DLL injection, proctoring bypass or hidden processes. Its overlay is an
-ordinary transparent Windows window and should be used for practice or in
-contexts where assistance and transcription are allowed.
+evasion, DLL injection, proctoring bypass or hidden processes. Its popup is an
+ordinary visible Windows window and should be used for practice or in
+contexts where assistance and transcription are allowed. The Stealth switch in
+1.0.7 is a non-functional placeholder.
 
 ## Main capabilities
 
@@ -29,8 +30,9 @@ contexts where assistance and transcription are allowed.
 - Local grounded-outline mode
 - OpenAI Responses API provider
 - Local Ollama provider
-- PySide6 dashboard and adjustable always-on-top overlay
-- SQLite profiles, documents and optional transcript history
+- 520×760 top-centre PySide6 popup with close-to-tray behaviour
+- Independent live microphone and meeting-audio controls
+- SQLite profiles, documents, transcripts and generated-answer history
 - API-key storage through Windows Credential Manager
 - PyInstaller and Inno Setup build pipeline
 - Windows GitHub Actions build workflow
@@ -55,7 +57,7 @@ context retrieval from SQLite
             |
  local / OpenAI / Ollama provider
             |
- dashboard + visible overlay
+ top-centre always-on-top popup
 ```
 
 Raw audio is not persisted. Transcription and answer generation run away from
@@ -70,7 +72,7 @@ src/clearcue/
 ├── intelligence/   # question detection, retrieval, prompts and providers
 ├── services/       # session orchestration and shortcuts
 ├── storage/        # SQLite persistence
-├── ui/             # PySide6 dashboard, dialogs and overlay
+├── ui/             # PySide6 popup, tray integration and supporting dialogs
 ├── config.py
 ├── paths.py
 ├── security.py
@@ -99,9 +101,9 @@ The application can also be launched using `INSTALL_AND_RUN.bat`.
 3. Runs the unit tests.
 4. Builds an onedir PyInstaller application.
 5. Compiles `installer/ClearCue.iss` with Inno Setup.
-6. Produces `installer/output/ClearCueUpdate_1.0.6.exe`.
+6. Produces `installer/output/ClearCueUpdate_1.0.7.exe`.
 
-Tagged builds such as `v1.0.6` are also published as permanent GitHub Releases.
+Tagged builds such as `v1.0.7` are also published as permanent GitHub Releases.
 Installed clients query the public latest-release endpoint, compare semantic
 versions, download in the background and verify GitHub's SHA-256 asset digest
 before starting a silent in-place update.
@@ -135,9 +137,11 @@ The test suite covers:
 - question detection
 - context ranking
 - grounded local output
-- SQLite profile, context and transcript lifecycle
+- SQLite profile, context, transcript and generated-answer lifecycle
 - audio resampling and segmentation helpers
 - CUDA-to-CPU transcription recovery
+- incomplete Whisper-cache repair
+- compact-popup scaling and meeting-label helpers
 - release parsing, version comparison and update integrity helpers
 
 Audio-device enumeration, live WASAPI/PortAudio capture, PyInstaller output,

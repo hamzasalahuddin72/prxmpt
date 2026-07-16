@@ -1,5 +1,5 @@
 #define MyAppName "ClearCue"
-#define MyAppVersion "1.0.6"
+#define MyAppVersion "1.0.7"
 #define MyAppPublisher "Hamza Salahuddin"
 #define MyAppExeName "ClearCue.exe"
 
@@ -13,7 +13,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=output
-OutputBaseFilename=ClearCueUpdate_1.0.6
+OutputBaseFilename=ClearCueUpdate_1.0.7
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -24,7 +24,7 @@ SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=yes
-VersionInfoVersion=1.0.6.0
+VersionInfoVersion=1.0.7.0
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -38,7 +38,7 @@ Source: "..\README_INSTALLATION.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\sample_context_template.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\PATCH_NOTES_1.0.6.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\PATCH_NOTES_1.0.7.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

@@ -48,7 +48,7 @@ class SessionController(QObject):
         self._incoming_level.connect(self.level_changed.emit)
         self._incoming_source_state.connect(self.source_state_changed.emit)
         self._incoming_error.connect(self.error_raised.emit)
-        self._incoming_answer.connect(self.answer_ready.emit)
+        self._incoming_answer.connect(self._handle_answer)
 
     @property
     def running(self) -> bool:
@@ -60,6 +60,17 @@ class SessionController(QObject):
     def update_config(self, config: AppConfig) -> None:
         self.config = config
         self.config_store.save(config)
+
+    def set_audio_source_enabled(self, kind: str, enabled: bool) -> None:
+        if kind == "microphone":
+            self.config.microphone_enabled = enabled
+        elif kind == "loopback":
+            self.config.speaker_enabled = enabled
+        else:
+            raise ValueError(f"Unknown audio source: {kind}")
+        self.config_store.save(self.config)
+        if self.audio and self.audio.running:
+            self.audio.set_source_enabled(kind, enabled)
 
     def start(self) -> None:
         if self.running:
@@ -137,6 +148,18 @@ class SessionController(QObject):
             self.question_ready.emit(question)
             if self.config.auto_generate:
                 self.ask(question)
+
+    @Slot(str, str, object)
+    def _handle_answer(self, question: str, answer: str, sources: object) -> None:
+        source_tuple = tuple(str(source) for source in (sources or ()))
+        if self.session_id is not None:
+            self.database.add_session_answer(
+                self.session_id,
+                question,
+                answer,
+                source_tuple,
+            )
+        self.answer_ready.emit(question, answer, source_tuple)
 
     def shutdown(self) -> None:
         self.stop()

@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import os
 import queue
+import re
+import shutil
 import threading
 import time
 from collections.abc import Callable
@@ -33,14 +35,36 @@ class FasterWhisperEngine:
 
         logical_cpus = os.cpu_count() or 4
         cpu_threads = max(1, min(4, logical_cpus - 1 if logical_cpus > 2 else logical_cpus))
-        self._model = WhisperModel(
-            self.model_name,
-            device=self.device,
-            compute_type=self.compute_type,
-            cpu_threads=cpu_threads,
-            num_workers=1,
-            download_root=str(models_dir()),
-        )
+        parameters = {
+            "device": self.device,
+            "compute_type": self.compute_type,
+            "cpu_threads": cpu_threads,
+            "num_workers": 1,
+            "download_root": str(models_dir()),
+        }
+        try:
+            self._model = WhisperModel(self.model_name, **parameters)
+        except RuntimeError as exc:
+            if not self._repair_incomplete_cache(exc):
+                raise
+            self._model = WhisperModel(self.model_name, **parameters)
+
+    def _repair_incomplete_cache(self, error: RuntimeError) -> bool:
+        message = str(error).lower()
+        if "model.bin" not in message or not any(
+            phrase in message for phrase in ("unable to open", "cannot open", "not found")
+        ):
+            return False
+        if not re.fullmatch(r"[a-zA-Z0-9._-]+", self.model_name):
+            return False
+        root = models_dir().resolve()
+        cache = (root / f"models--Systran--faster-whisper-{self.model_name}").resolve()
+        if cache.parent != root or not cache.name.startswith("models--Systran--faster-whisper-"):
+            return False
+        if cache.exists():
+            LOGGER.warning("Removing incomplete speech-model cache at %s", cache)
+            shutil.rmtree(cache)
+        return True
 
     def transcribe(self, audio: np.ndarray) -> str:
         self.load()

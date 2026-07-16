@@ -7,7 +7,7 @@ from pathlib import Path
 from clearcue.paths import settings_path
 
 
-CURRENT_CONFIG_VERSION = 3
+CURRENT_CONFIG_VERSION = 4
 
 
 @dataclass(slots=True)
@@ -15,6 +15,8 @@ class AppConfig:
     config_version: int = CURRENT_CONFIG_VERSION
     speaker_id: str = ""
     microphone_id: str = ""
+    speaker_enabled: bool = True
+    microphone_enabled: bool = True
     sample_rate: int = 48_000
     whisper_model: str = "tiny.en"
     whisper_device: str = "cpu"
@@ -31,6 +33,9 @@ class AppConfig:
     consent_acknowledged: bool = False
     save_transcripts: bool = True
     auto_check_updates: bool = True
+    popup_width: int = 520
+    popup_height: int = 760
+    popup_drag_locked: bool = True
 
 
 class ConfigStore:
@@ -65,8 +70,19 @@ class ConfigStore:
                 config.whisper_device = "cpu"
                 config.whisper_compute_type = "int8"
                 config.auto_check_updates = True
+            if source_version < 4:
+                # v1.0.7 replaces the dashboard/overlay pair with one compact
+                # popup. Both audio sources remain enabled until the user
+                # switches either one off from the popup controls.
+                config.speaker_enabled = True
+                config.microphone_enabled = True
+                config.popup_width = 520
+                config.popup_height = 760
+                config.popup_drag_locked = True
             config.config_version = CURRENT_CONFIG_VERSION
             config.overlay_opacity = min(1.0, max(0.45, config.overlay_opacity))
+            config.popup_width = min(520, max(380, int(config.popup_width)))
+            config.popup_height = min(760, max(560, int(config.popup_height)))
             return config
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             return AppConfig()

@@ -31,7 +31,7 @@ This is the quickest way to test the application before producing an installer.
 Future launches can use the same `INSTALL_AND_RUN.bat`. It reuses the existing
 environment rather than downloading everything again.
 
-## Option 2 — create the ClearCue 1.0.6 update installer
+## Option 2 — create the ClearCue 1.0.7 update installer
 
 The supplied build creates a self-contained Windows application. End users do
 not need Python after installing that build.
@@ -50,7 +50,7 @@ not need Python after installing that build.
    <https://jrsoftware.org/isdl.php> and run the builder again.
 6. The finished installer appears at:
 
-   `installer\output\ClearCueUpdate_1.0.6.exe`
+   `installer\output\ClearCueUpdate_1.0.7.exe`
 
 You can also run the build directly from PowerShell:
 
@@ -61,7 +61,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 PyInstaller must build a Windows executable on Windows. The included GitHub
 Actions workflow can perform the same build on a Windows runner and return the
-installer as a workflow artifact. Pushing a version tag such as `v1.0.6` also
+installer as a workflow artifact. Pushing a version tag such as `v1.0.7` also
 publishes the installer as a permanent GitHub Release for the in-app updater.
 
 If a previous build was interrupted and left a broken `.venv-build` folder, the
@@ -72,7 +72,8 @@ delete it yourself.
 
 ### 1. Create a profile
 
-Open **Context** and create a profile for the role you are practising. Import:
+Open the gear menu and choose **Profiles and context**, then create a profile for
+the role you are practising. Import:
 
 - Your current CV
 - The target job description
@@ -118,14 +119,14 @@ CPU/`int8` and retries the interrupted segment once.
 ### 4. Updates
 
 ClearCue checks the public GitHub Release feed shortly after launch and every
-six hours while running. A high-contrast banner appears when a stable newer
-version exists. Click **Download and install** to download the installer,
+six hours while running. A Windows tray notification appears when a stable newer
+version exists. Open the gear menu and choose the available update to download it,
 verify its SHA-256 digest, stop listening safely and update in place. Profiles,
 context, settings, model files and history are preserved.
 
-Use the **Updates** button in the main window to check immediately. Automatic
-checks can be disabled under **Settings → Updates**. Update installation always
-requires confirmation.
+Use **Gear → Check for updates** to check immediately. Automatic checks can be
+disabled under **Settings → Updates**. Update installation always requires
+confirmation.
 
 ### 5. Choose an answer provider
 
@@ -142,20 +143,23 @@ OpenAI API usage is billed separately from ChatGPT subscriptions.
 
 ## Starting a practice session
 
-1. Confirm the consent/permission checkbox.
-2. Start the Teams, Zoom or browser test call.
-3. Click **Start listening**.
-4. Speak or play meeting audio and check both level meters.
-5. Detected questions appear in the question field.
-6. Generate an answer manually or enable automatic generation in Settings.
-7. Open the visible overlay if you want a compact always-on-top coaching view.
-8. Click **Stop listening** when finished.
+1. Start the Teams, Zoom or browser test call.
+2. Leave the blue microphone and speaker buttons enabled for both sources, or
+   disable either source by clicking its button.
+3. Click the centre three-dot pill. Confirm permission the first time ClearCue
+   asks; the pill displays `LIVE` while listening.
+4. Detected questions appear in the upper question field.
+5. Click **Answer** or enable the **Auto answer** switch.
+6. Click the `LIVE` pill again when finished. Recent meetings appear at the
+   bottom with transcript, generated-answer and delete controls.
+7. The red X hides ClearCue in the system tray; use the tray icon to reopen or
+   quit it.
 
 Global shortcuts:
 
 - `Ctrl+Alt+S` — start or stop listening
 - `Ctrl+Alt+A` — generate an answer for the current question
-- `Ctrl+Alt+O` — show or hide the overlay
+- `Ctrl+Alt+O` — show or hide the popup
 
 ## Privacy behaviour
 
@@ -188,12 +192,14 @@ more reliable simultaneous playback and microphone capture.
 ### First transcription takes a long time
 
 The local model is downloading or loading. Keep `tiny.en` for minimum latency,
-or try `base.en` when you want more accuracy and the computer can keep up.
+or try `base.en` when you want more accuracy and the computer can keep up. If an
+interrupted download leaves `model.bin` missing, ClearCue 1.0.7 removes only the
+incomplete model cache and retries the download once.
 
 ### CUDA or CTranslate2 error
 
 Select CPU and `int8`. GPU mode requires compatible NVIDIA libraries that are
-not bundled by the basic installer. ClearCue 1.0.6 also performs this fallback
+not bundled by the basic installer. ClearCue 1.0.7 also performs this fallback
 automatically if CUDA fails during the first inference.
 
 ### OpenAI answer fails
@@ -206,7 +212,7 @@ automatically if CUDA fails during the first inference.
 ### Windows SmartScreen warning
 
 Locally built applications are unsigned. For public distribution, sign both
-`ClearCue.exe` and `ClearCueUpdate_1.0.6.exe` with an Authenticode code-signing
+`ClearCue.exe` and `ClearCueUpdate_1.0.7.exe` with an Authenticode code-signing
 certificate. Do not advise users to bypass organisational security controls.
 
 ## Uninstalling

@@ -67,6 +67,7 @@ def main() -> int:
     app.setApplicationName("ClearCue")
     app.setApplicationDisplayName("ClearCue Interview Coach")
     app.setOrganizationName("Hamza Salahuddin")
+    app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(APP_STYLESHEET)
 
     config_store = ConfigStore()
