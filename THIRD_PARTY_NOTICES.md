@@ -1,0 +1,20 @@
+# Third-party notices
+
+ClearCue depends on third-party packages installed separately with `pip`.
+Their licences remain with their respective authors. The primary packages are:
+
+- Qt for Python / PySide6 — LGPLv3/GPLv3/commercial licensing
+- SoundCard — BSD 3-Clause
+- faster-whisper — MIT
+- CTranslate2 — MIT
+- WebRTC VAD wheels — MIT/BSD-style upstream components
+- OpenAI Python SDK — Apache 2.0
+- pypdf — BSD 3-Clause
+- python-docx — MIT
+- keyring — MIT
+- pynput — LGPLv3
+- NumPy — BSD 3-Clause
+
+Review the installed package metadata before distributing a commercial build.
+VoiceMeeter is not bundled and remains subject to VB-Audio's own licence.
+
