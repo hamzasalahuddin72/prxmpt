@@ -21,7 +21,7 @@ class OverlayWindow(QWidget):
     def __init__(self, opacity: float = 1.0, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("Overlay")
-        self.setWindowTitle("ClearCue Overlay")
+        self.setWindowTitle("prxmpt Overlay")
         self.setWindowFlags(
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint

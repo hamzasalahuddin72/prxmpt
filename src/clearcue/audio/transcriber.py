@@ -12,6 +12,7 @@ from collections.abc import Callable
 import numpy as np
 
 from clearcue.paths import models_dir
+from clearcue.resources import bundled_model_dir
 
 
 LOGGER = logging.getLogger(__name__)
@@ -42,10 +43,16 @@ class FasterWhisperEngine:
             "num_workers": 1,
             "download_root": str(models_dir()),
         }
+        model_source = self.model_name
+        if self.model_name == "tiny.en":
+            bundled = bundled_model_dir(self.model_name)
+            if bundled is not None:
+                model_source = str(bundled)
+                LOGGER.info("Loading bundled speech model from %s", bundled)
         try:
-            self._model = WhisperModel(self.model_name, **parameters)
+            self._model = WhisperModel(model_source, **parameters)
         except RuntimeError as exc:
-            if not self._repair_incomplete_cache(exc):
+            if model_source != self.model_name or not self._repair_incomplete_cache(exc):
                 raise
             self._model = WhisperModel(self.model_name, **parameters)
 
@@ -92,6 +99,7 @@ class TranscriptionWorker:
         on_transcript: Callable[[str, str], None],
         on_status: Callable[[str], None] | None = None,
         on_error: Callable[[str], None] | None = None,
+        on_transcribing: Callable[[bool], None] | None = None,
         engine: FasterWhisperEngine | None = None,
         engine_factory: Callable[[str, str, str], FasterWhisperEngine] | None = None,
         queue_size: int = 4,
@@ -101,6 +109,7 @@ class TranscriptionWorker:
         self.on_transcript = on_transcript
         self.on_status = on_status or (lambda message: None)
         self.on_error = on_error or (lambda message: None)
+        self.on_transcribing = on_transcribing or (lambda active: None)
         self._queue: queue.Queue[tuple[str, np.ndarray] | None] = queue.Queue(
             maxsize=max(2, queue_size)
         )
@@ -165,9 +174,11 @@ class TranscriptionWorker:
                     self._fallback_to_cpu()
                 except Exception as fallback_exc:
                     self.on_error(f"Speech model could not load: {fallback_exc}")
+                    self.on_transcribing(False)
                     return
             else:
                 self.on_error(f"Speech model could not load: {exc}")
+                self.on_transcribing(False)
                 return
 
         if self._stop.is_set():
@@ -181,6 +192,7 @@ class TranscriptionWorker:
             if item is None:
                 break
             speaker, audio = item
+            self.on_transcribing(True)
             try:
                 started = time.perf_counter()
                 try:
@@ -213,6 +225,10 @@ class TranscriptionWorker:
             except Exception as exc:
                 LOGGER.exception("Transcription failed")
                 self.on_error(f"Transcription failed: {exc}")
+            finally:
+                if self._queue.empty():
+                    self.on_transcribing(False)
+        self.on_transcribing(False)
         self.on_status("Transcription stopped")
 
     def _fallback_to_cpu(self) -> None:

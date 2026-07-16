@@ -1,6 +1,6 @@
-# ClearCue
+# prxmpt
 
-ClearCue is a native Windows interview-practice and disclosed meeting coaching
+prxmpt is a native Windows interview-practice and disclosed meeting coaching
 assistant written in Python and PySide6. It provides local system-audio capture,
 microphone capture, local speech-to-text, question detection, context retrieval,
 grounded answer generation, a compact always-on-top popup and local session
@@ -11,11 +11,11 @@ installation, first-run and troubleshooting guide.
 
 ## Product boundaries
 
-ClearCue deliberately does not implement screen-capture exclusion, screen-share
+prxmpt deliberately does not implement screen-capture exclusion, screen-share
 evasion, DLL injection, proctoring bypass or hidden processes. Its popup is an
 ordinary visible Windows window and should be used for practice or in
 contexts where assistance and transcription are allowed. The Stealth switch in
-1.0.7 is a non-functional placeholder.
+1.0.8 is a non-functional placeholder.
 
 ## Main capabilities
 
@@ -23,14 +23,15 @@ contexts where assistance and transcription are allowed. The Stealth switch in
 - PortAudio microphone capture through sounddevice for broader driver compatibility
 - Separate microphone channel and speaker labels
 - In-memory resampling and utterance segmentation
-- Local faster-whisper transcription
+- Local faster-whisper transcription with bundled `tiny.en` weights
 - Interview-question detection
 - PDF, DOCX, TXT and Markdown context ingestion
 - Lightweight local context retrieval without a framework dependency
 - Local grounded-outline mode
 - OpenAI Responses API provider
 - Local Ollama provider
-- 520×760 top-centre PySide6 popup with close-to-tray behaviour
+- 551×827 top-centre PySide6 popup based on the approved SVG component geometry
+- Exact SVG-derived PNG controls packaged as native Qt button assets
 - Independent live microphone and meeting-audio controls
 - SQLite profiles, documents, transcripts and generated-answer history
 - API-key storage through Windows Credential Manager
@@ -99,14 +100,20 @@ The application can also be launched using `INSTALL_AND_RUN.bat`.
 1. Creates a dedicated build environment.
 2. Installs application and development dependencies.
 3. Runs the unit tests.
-4. Builds an onedir PyInstaller application.
-5. Compiles `installer/ClearCue.iss` with Inno Setup.
-6. Produces `installer/output/ClearCueUpdate_1.0.7.exe`.
+4. Downloads and validates the distributable `tiny.en` faster-whisper snapshot.
+5. Builds an onedir PyInstaller application containing that local speech model.
+6. Compiles `installer/prxmpt.iss` with Inno Setup.
+7. Produces `installer/output/ClearCueUpdate_1.0.8.exe`.
 
-Tagged builds such as `v1.0.7` are also published as permanent GitHub Releases.
+Tagged builds such as `v1.0.8` are also published as permanent GitHub Releases.
 Installed clients query the public latest-release endpoint, compare semantic
 versions, download in the background and verify GitHub's SHA-256 asset digest
 before starting a silent in-place update.
+
+The v1.0.8 asset deliberately keeps the `ClearCueUpdate_...` filename so an
+installed ClearCue 1.0.7 client can discover the rename release. The installed
+application, executable, shortcuts, tray menu and Windows Apps entry are all
+named `prxmpt`.
 
 An onedir application is intentionally used behind the single installer. Large
 Qt and AI dependencies start more reliably this way than when every dependency
@@ -141,6 +148,8 @@ The test suite covers:
 - audio resampling and segmentation helpers
 - CUDA-to-CPU transcription recovery
 - incomplete Whisper-cache repair
+- bundled-model discovery and transcription activity reporting
+- pause-based multi-fragment question collection
 - compact-popup scaling and meeting-label helpers
 - release parsing, version comparison and update integrity helpers
 

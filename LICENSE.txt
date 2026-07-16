@@ -1,9 +1,8 @@
 Copyright (c) 2026 Hamza Salahuddin. All rights reserved.
 
 This source release may be used, modified, and built by its owner. No rights
-are granted to redistribute or sell ClearCue or derivative products without
+are granted to redistribute or sell prxmpt or derivative products without
 the copyright holder's permission.
 
 Third-party packages retain their respective licences. See
 THIRD_PARTY_NOTICES.md.
-

@@ -3,7 +3,7 @@ from __future__ import annotations
 from clearcue.intelligence.retriever import RetrievedChunk
 
 
-SYSTEM_INSTRUCTIONS = """You are ClearCue, an interview practice and disclosed meeting coach.
+SYSTEM_INSTRUCTIONS = """You are prxmpt, an interview practice and disclosed meeting coach.
 Produce a natural first-person answer that the user can adapt and speak.
 
 Grounding rules:

@@ -1,2 +1,2 @@
-"""Qt user interface for ClearCue."""
+"""Qt user interface for prxmpt."""
 

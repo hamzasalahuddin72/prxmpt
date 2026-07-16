@@ -24,8 +24,8 @@ jobs:
         run: .\scripts\build_windows.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: ClearCue-Windows-Update-1.0.7
-          path: installer/output/ClearCueUpdate_1.0.7.exe
+          name: prxmpt-Windows-Update-1.0.8
+          path: installer/output/ClearCueUpdate_1.0.8.exe
           if-no-files-found: error
       - name: Publish tagged GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           gh release create "${{ github.ref_name }}"
-          "installer/output/ClearCueUpdate_1.0.7.exe"
+          "installer/output/ClearCueUpdate_1.0.8.exe"
           --verify-tag
           --generate-notes
-          --title "ClearCue ${{ github.ref_name }}"
+          --title "prxmpt ${{ github.ref_name }}"

@@ -87,7 +87,7 @@ class HistoryDialog(QDialog):
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Export transcript",
-            f"clearcue-session-{self.current_session_id}.txt",
+            f"prxmpt-session-{self.current_session_id}.txt",
             "Text files (*.txt)",
         )
         if path:

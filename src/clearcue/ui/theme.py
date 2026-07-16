@@ -1,4 +1,4 @@
-"""ClearCue popup and supporting-dialog theme."""
+"""prxmpt popup and supporting-dialog theme."""
 
 
 APP_STYLESHEET = """
@@ -8,91 +8,57 @@ QWidget {
     font-family: "Segoe UI";
     font-size: 10pt;
 }
-QWidget#TransparentRoot, QMainWindow {
+QWidget#TransparentRoot, QWidget#TransparentPanel, QMainWindow {
     background: transparent;
 }
 QFrame#PopupRoot {
     background: #000000;
-    border: 1px solid #000000;
-    border-radius: 50px;
+    border: 1px solid #81817a;
+    border-radius: 58px;
 }
 QFrame#PopupHeader {
-    background: #111a1f;
-    border: 0;
-    border-radius: 28px;
+    background: rgba(63, 92, 114, 77);
+    border: 1px solid #000000;
+    border-radius: 32px;
 }
 QLabel#PopupBrand {
     background: transparent;
-    color: #ffffa2;
-    font-size: 22pt;
-    font-weight: 400;
 }
 QPushButton#SettingsIcon,
 QPushButton#HeaderIcon,
 QPushButton#DragIcon,
 QPushButton#PrivacyIcon,
 QPushButton#PopupClose {
-    min-width: 40px;
-    max-width: 40px;
-    min-height: 40px;
-    max-height: 40px;
     padding: 0;
+    margin: 0;
+    background: transparent;
     border: 0;
 }
-QPushButton#SettingsIcon {
-    background: #777b7e;
-    color: #25282a;
-    border-radius: 20px;
-    font-size: 24pt;
-}
-QPushButton#SettingsIcon:hover { background: #a8abad; }
+QPushButton#SettingsIcon:hover,
+QPushButton#DragIcon:hover,
+QPushButton#PrivacyIcon:hover,
+QPushButton#PopupClose:hover { border: 1px solid #ffffff; border-radius: 6px; }
 QPushButton#SettingsIcon[updateAvailable="true"] {
     border: 2px solid #ffff42;
+    border-radius: 17px;
 }
-QPushButton#DragIcon {
-    background: transparent;
-    color: #718cff;
-    font-size: 28pt;
-    font-weight: 800;
-}
-QPushButton#DragIcon[unlocked="true"] { color: #20d7ff; }
-QPushButton#PrivacyIcon {
-    background: transparent;
-    color: #ff5738;
-    font-size: 23pt;
-    font-weight: 800;
-}
-QPushButton#PopupClose {
-    background: #df4c5a;
-    color: #ffffff;
-    border-radius: 7px;
-    font-size: 24pt;
-    font-weight: 800;
-}
-QPushButton#PopupClose:hover { background: #ff6572; }
 
 QFrame#AudioCard,
 QFrame#QuestionCard,
 QFrame#AnswerCard {
     background: #1f1f20;
     border: 0;
-    border-radius: 44px;
+    border-radius: 58px;
 }
+QFrame#AudioCard { background: rgba(255, 255, 255, 31); }
 QPushButton#AudioSourceButton {
-    min-width: 56px;
-    max-width: 56px;
-    min-height: 56px;
-    max-height: 56px;
     padding: 0;
-    background: #56585b;
-    color: #ffffff;
+    margin: 0;
+    background: transparent;
     border: 2px solid transparent;
-    border-radius: 28px;
-    font-size: 24pt;
+    border-radius: 10px;
 }
-QPushButton#AudioSourceButton[active="true"] { background: #12aef4; }
 QPushButton#AudioSourceButton[active="true"][signal="true"] {
-    background: #25cfff;
     border-color: #ffffff;
 }
 QPushButton#AudioSourceButton[sourceState="retrying"] {
@@ -100,8 +66,6 @@ QPushButton#AudioSourceButton[sourceState="retrying"] {
 }
 QPushButton#AudioSourceButton:hover { border-color: #ffffff; }
 QPushButton#ModelBadge {
-    min-height: 28px;
-    max-height: 28px;
     background: #000000;
     color: #f1f1f4;
     border: 1px solid #4b3726;
@@ -110,6 +74,17 @@ QPushButton#ModelBadge {
     font-size: 8.5pt;
 }
 QPushButton#ModelBadge:hover { border-color: #25cfff; }
+QPushButton#LiveButton {
+    padding: 0;
+    background: #67696d;
+    color: #ffffff;
+    border: 0;
+    border-radius: 14px;
+    font-size: 9pt;
+    font-weight: 700;
+}
+QPushButton#LiveButton[running="true"] { background: #34c759; }
+QPushButton#LiveButton:hover { border: 1px solid #ffffff; }
 
 QPlainTextEdit#QuestionInput {
     background: transparent;
@@ -121,9 +96,13 @@ QPlainTextEdit#QuestionInput {
 }
 QPushButton#AnswerButton,
 QPushButton#ClearButton,
+QLabel#TranscriptionIndicator {
+    background: transparent;
+    border: 0;
+}
 QPushButton#SessionPill {
-    min-height: 30px;
-    max-height: 30px;
+    min-height: 29px;
+    max-height: 29px;
     border: 0;
     padding: 0 15px;
     color: #ffffff;
@@ -153,10 +132,10 @@ QPushButton#SessionPill[running="true"] {
 }
 
 QPlainTextEdit#AnswerView {
-    background: #303033;
+    background: #252527;
     color: #f8f8f9;
     border: 1px solid #9b9ca1;
-    border-radius: 42px;
+    border-radius: 58px;
     padding: 18px 20px;
     font-size: 15.5pt;
     selection-background-color: #0a9fe8;
@@ -175,9 +154,9 @@ QLabel#ToggleLabel {
 }
 
 QFrame#HistoryCard {
-    background: #061017;
-    border: 1px solid #687781;
-    border-radius: 42px;
+    background: rgba(0, 26, 53, 51);
+    border: 0;
+    border-radius: 58px;
 }
 QFrame#MeetingRow {
     background: transparent;
@@ -199,11 +178,8 @@ QLabel#EmptyHistory { padding: 18px; color: #9ea7ad; }
 QPushButton#MeetingTranscript,
 QPushButton#MeetingNotes,
 QPushButton#MeetingDelete {
-    min-width: 24px;
-    max-width: 24px;
-    min-height: 24px;
-    max-height: 24px;
     padding: 0;
+    margin: 0;
     background: transparent;
     border: 0;
     font-size: 14pt;

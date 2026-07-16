@@ -20,7 +20,10 @@ class SpeechSegmenter:
         self.frame_ms = 20
         self.frame_samples = sample_rate * self.frame_ms // 1000
         self.pre_roll_frames = 10
-        self.end_silence_frames = 18
+        # Emit after roughly 280 ms of silence so tiny.en can start while a
+        # question is still fresh. The controller joins adjacent fragments
+        # until the longer question-pause timer expires.
+        self.end_silence_frames = 14
         self.minimum_frames = 10
         self.maximum_frames = 750
         self._pending = np.zeros(0, dtype=np.float32)

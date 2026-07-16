@@ -1,3 +1,3 @@
-"""ClearCue interview practice and disclosed meeting coach."""
+"""prxmpt interview practice and disclosed meeting coach."""
 
-__version__ = "1.0.7"
+__version__ = "1.0.8"

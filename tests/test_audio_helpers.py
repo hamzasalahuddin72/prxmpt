@@ -153,6 +153,28 @@ def test_transcription_worker_preloads_and_emits() -> None:
     assert captured == [("You", "samples=3200")]
 
 
+def test_transcription_worker_reports_only_active_inference() -> None:
+    engine = _FakeEngine()
+    ready = threading.Event()
+    busy = []
+    worker = TranscriptionWorker(
+        "fake",
+        "cpu",
+        "int8",
+        lambda speaker, text: ready.set(),
+        on_transcribing=busy.append,
+        engine=engine,
+    )
+    worker.start()
+    assert engine.loaded.wait(1)
+    assert busy == []
+    worker.submit("Interviewer", np.zeros(1_600, dtype=np.float32))
+    assert ready.wait(1)
+    worker.stop()
+    assert busy[:2] == [True, False]
+    assert busy[-1] is False
+
+
 def test_transcription_worker_recovers_when_cuda_fails_during_inference() -> None:
     ready = threading.Event()
     captured = []
@@ -230,6 +252,24 @@ def test_incomplete_model_cache_is_removed_and_retried(monkeypatch, tmp_path) ->
     engine.load()
     assert len(attempts) == 2
     assert not cache.exists()
+
+
+def test_tiny_engine_prefers_bundled_model_path(monkeypatch, tmp_path) -> None:
+    loaded = []
+
+    class FakeWhisperModel:
+        def __init__(self, model_source: str, **kwargs) -> None:
+            loaded.append((model_source, kwargs))
+
+    monkeypatch.setitem(
+        sys.modules,
+        "faster_whisper",
+        SimpleNamespace(WhisperModel=FakeWhisperModel),
+    )
+    monkeypatch.setattr("clearcue.audio.transcriber.bundled_model_dir", lambda name: tmp_path)
+    monkeypatch.setattr("clearcue.audio.transcriber.models_dir", lambda: tmp_path)
+    FasterWhisperEngine("tiny.en", "cpu", "int8").load()
+    assert loaded[0][0] == str(tmp_path)
 
 
 def test_coordinator_switches_audio_sources_while_running(monkeypatch) -> None:

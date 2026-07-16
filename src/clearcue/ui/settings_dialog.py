@@ -25,7 +25,7 @@ from clearcue.security import SecretStoreError, get_openai_key, set_openai_key
 class SettingsDialog(QDialog):
     def __init__(self, config: AppConfig, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("ClearCue Settings")
+        self.setWindowTitle("prxmpt Settings")
         self.resize(610, 570)
         self.original_config = config
         self.result_config = replace(config)
@@ -72,7 +72,7 @@ class SettingsDialog(QDialog):
         speech_form.addRow("Compute type", self.compute_type)
         model_note = QLabel(
             "Performance default: tiny.en + CPU + int8. Use base.en for more accuracy. "
-            "The selected model downloads once on first use."
+            "The Windows installer includes tiny.en; other selected models download once."
         )
         model_note.setWordWrap(True)
         model_note.setObjectName("Muted")
@@ -118,11 +118,11 @@ class SettingsDialog(QDialog):
 
         updates_tab = QWidget()
         updates_form = QFormLayout(updates_tab)
-        self.auto_check_updates = QCheckBox("Notify me when a stable ClearCue update is available")
+        self.auto_check_updates = QCheckBox("Notify me when a stable prxmpt update is available")
         self.auto_check_updates.setChecked(config.auto_check_updates)
         updates_form.addRow("Automatic checks", self.auto_check_updates)
         updates_note = QLabel(
-            "ClearCue checks the public GitHub Release feed without an account or token. "
+            "prxmpt checks the public GitHub Release feed without an account or token. "
             "Use the Updates button in the main window to check immediately. Installation "
             "always requires your confirmation."
         )

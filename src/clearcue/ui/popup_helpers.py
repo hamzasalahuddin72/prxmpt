@@ -8,8 +8,8 @@ from clearcue.storage.database import SessionSummary
 def popup_size_for_screen(
     available_width: int,
     available_height: int,
-    preferred_width: int = 520,
-    preferred_height: int = 760,
+    preferred_width: int = 551,
+    preferred_height: int = 827,
 ) -> tuple[int, int]:
     """Scale the reference popup down so it remains inside the work area."""
     scale = min(

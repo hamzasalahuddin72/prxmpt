@@ -35,6 +35,24 @@ def test_release_parser_selects_verified_windows_installer() -> None:
     assert release.sha256 == "ab" * 32
 
 
+def test_release_parser_prefers_new_prxmpt_installer_name() -> None:
+    payload = _release_payload()
+    payload["assets"].append(
+        {
+            "name": "prxmptUpdate_1.0.6.exe",
+            "browser_download_url": (
+                "https://github.com/hamzasalahuddin72/clear-cue/releases/download/"
+                "v1.0.6/prxmptUpdate_1.0.6.exe"
+            ),
+            "size": 4321,
+            "digest": "sha256:" + "cd" * 32,
+        }
+    )
+    release = parse_release(payload)
+    assert release.installer_name == "prxmptUpdate_1.0.6.exe"
+    assert release.sha256 == "cd" * 32
+
+
 def test_release_parser_rejects_missing_installer() -> None:
     payload = _release_payload()
     payload["assets"] = []

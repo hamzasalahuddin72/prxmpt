@@ -7,7 +7,7 @@ from pathlib import Path
 from clearcue.paths import settings_path
 
 
-CURRENT_CONFIG_VERSION = 4
+CURRENT_CONFIG_VERSION = 5
 
 
 @dataclass(slots=True)
@@ -33,8 +33,8 @@ class AppConfig:
     consent_acknowledged: bool = False
     save_transcripts: bool = True
     auto_check_updates: bool = True
-    popup_width: int = 520
-    popup_height: int = 760
+    popup_width: int = 551
+    popup_height: int = 827
     popup_drag_locked: bool = True
 
 
@@ -79,10 +79,17 @@ class ConfigStore:
                 config.popup_width = 520
                 config.popup_height = 760
                 config.popup_drag_locked = True
+            if source_version < 5:
+                # v1.0.8 adopts the approved 551x827 prxmpt reference canvas.
+                config.whisper_model = "tiny.en"
+                config.whisper_device = "cpu"
+                config.whisper_compute_type = "int8"
+                config.popup_width = 551
+                config.popup_height = 827
             config.config_version = CURRENT_CONFIG_VERSION
             config.overlay_opacity = min(1.0, max(0.45, config.overlay_opacity))
-            config.popup_width = min(520, max(380, int(config.popup_width)))
-            config.popup_height = min(760, max(560, int(config.popup_height)))
+            config.popup_width = min(551, max(380, int(config.popup_width)))
+            config.popup_height = min(827, max(560, int(config.popup_height)))
             return config
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             return AppConfig()

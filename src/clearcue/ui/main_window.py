@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import partial
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QTimer, Qt, QUrl, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QSize, QTimer, Qt, QUrl, Signal
 from PySide6.QtGui import (
     QAction,
     QColor,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QFrame,
+    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -32,6 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from clearcue.config import AppConfig, ConfigStore
+from clearcue.resources import resource_path
 from clearcue.services.session_controller import SessionController
 from clearcue.services.updater import ReleaseInfo, UpdateService
 from clearcue.storage.database import Database
@@ -53,21 +55,25 @@ class HotkeyBridge(QObject):
 
 
 class ToggleSwitch(QCheckBox):
-    """Small painted switch matching the reference without image assets."""
+    """Toggle using the exact approved on-state asset."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedSize(42, 24)
+        self.setFixedSize(45, 45)
+        self._on_pixmap = QPixmap(str(resource_path("toggle-on.png")))
 
     def paintEvent(self, event: QPaintEvent) -> None:  # noqa: ARG002
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        if self.isChecked() and not self._on_pixmap.isNull():
+            painter.drawPixmap(self.rect(), self._on_pixmap)
+            return
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#18c96e") if self.isChecked() else QColor("#55575c"))
-        painter.drawRoundedRect(0, 3, 42, 18, 9, 9)
-        painter.setBrush(QColor("#17c7b6") if self.isChecked() else QColor("#d8d9dc"))
-        painter.drawEllipse(20 if self.isChecked() else 2, 1, 22, 22)
+        painter.setBrush(QColor("#55575c"))
+        painter.drawRoundedRect(0, 13, 45, 19, 10, 10)
+        painter.setBrush(QColor("#d8d9dc"))
+        painter.drawEllipse(1, 11, 23, 23)
 
 
 def _set_dynamic_property(widget: QWidget, name: str, value: object) -> None:
@@ -105,7 +111,7 @@ class MainWindow(QMainWindow):
         self._cleaned_up = False
         self._tray_notice_shown = False
 
-        self.setWindowTitle("ClearCue 1.0.7")
+        self.setWindowTitle("prxmpt 1.0.8")
         self.setWindowFlags(
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
@@ -133,25 +139,24 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _make_app_icon() -> QIcon:
-        pixmap = QPixmap(64, 64)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QColor("#111a1f"))
-        painter.setPen(QColor("#25cfff"))
-        painter.drawEllipse(3, 3, 58, 58)
-        painter.setPen(QColor("#ffffa2"))
-        painter.setFont(QFont("Segoe UI", 28, QFont.Weight.DemiBold))
-        painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "C")
-        painter.end()
-        return QIcon(pixmap)
+        return QIcon(str(resource_path("prxmpt.ico")))
 
     @staticmethod
-    def _icon_button(text: str, object_name: str = "HeaderIcon") -> QPushButton:
+    def _icon_button(
+        text: str = "",
+        object_name: str = "HeaderIcon",
+        asset: str | None = None,
+        icon_size: tuple[int, int] | None = None,
+    ) -> QPushButton:
         button = QPushButton(text)
         button.setObjectName(object_name)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        if asset:
+            button.setText("")
+            button.setIcon(QIcon(str(resource_path(asset))))
+            if icon_size:
+                button.setIconSize(QSize(*icon_size))
         return button
 
     def _build_ui(self) -> None:
@@ -165,83 +170,124 @@ class MainWindow(QMainWindow):
         self.popup_frame.setObjectName("PopupRoot")
         transparent_layout.addWidget(self.popup_frame)
         root = QVBoxLayout(self.popup_frame)
-        root.setContentsMargins(12, 12, 12, 12)
-        root.setSpacing(10)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        root.addSpacing(12)
+
+        header_shell = QWidget()
+        header_shell.setObjectName("TransparentPanel")
+        header_shell_layout = QHBoxLayout(header_shell)
+        header_shell_layout.setContentsMargins(20, 0, 16, 0)
+        header_shell_layout.setSpacing(0)
 
         self.header = QFrame()
         self.header.setObjectName("PopupHeader")
-        self.header.setFixedHeight(56)
         self.header.installEventFilter(self)
         header_layout = QHBoxLayout(self.header)
-        header_layout.setContentsMargins(14, 5, 12, 5)
-        header_layout.setSpacing(10)
+        header_layout.setContentsMargins(23, 0, 29, 0)
+        header_layout.setSpacing(0)
 
-        self.settings_button = self._icon_button("⚙", "SettingsIcon")
+        self.settings_button = self._icon_button(
+            object_name="SettingsIcon", asset="settings.png", icon_size=(35, 35)
+        )
+        self.settings_button.setFixedSize(35, 35)
         self.settings_button.setToolTip("Settings, profile, context and updates")
         self.settings_button.clicked.connect(self._show_control_menu)
         header_layout.addWidget(self.settings_button)
+        header_layout.addStretch(136)
 
-        self.brand = QLabel("ClearCue")
+        self.brand = QLabel()
         self.brand.setObjectName("PopupBrand")
+        self.brand.setFixedSize(122, 58)
+        self.brand.setPixmap(QPixmap(str(resource_path("prxmpt-logo.png"))))
+        self.brand.setScaledContents(True)
         self.brand.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.brand.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        header_layout.addWidget(self.brand, 1)
+        header_layout.addWidget(self.brand)
+        header_layout.addStretch(55)
 
-        self.drag_button = self._icon_button("✥", "DragIcon")
+        self.drag_button = self._icon_button(
+            object_name="DragIcon", asset="drag-lock.png", icon_size=(26, 26)
+        )
+        self.drag_button.setFixedSize(26, 26)
         self.drag_button.clicked.connect(self._toggle_drag_lock)
         header_layout.addWidget(self.drag_button)
+        header_layout.addStretch(18)
 
-        self.collapse_button = self._icon_button("◉̸", "PrivacyIcon")
-        self.collapse_button.setToolTip("Collapse ClearCue to the title bar")
+        self.collapse_button = self._icon_button(
+            object_name="PrivacyIcon", asset="collapse.png", icon_size=(31, 31)
+        )
+        self.collapse_button.setFixedSize(31, 31)
+        self.collapse_button.setToolTip("Collapse prxmpt to the title bar")
         self.collapse_button.clicked.connect(self._toggle_collapsed)
         header_layout.addWidget(self.collapse_button)
+        header_layout.addStretch(13)
 
-        self.close_button = self._icon_button("✕", "PopupClose")
-        self.close_button.setToolTip("Minimize ClearCue to the system tray")
+        self.close_button = self._icon_button(
+            object_name="PopupClose", asset="exit.png", icon_size=(26, 26)
+        )
+        self.close_button.setFixedSize(26, 26)
+        self.close_button.setToolTip("Minimize prxmpt to the system tray")
         self.close_button.clicked.connect(self.minimize_to_tray)
         header_layout.addWidget(self.close_button)
-        root.addWidget(self.header)
+        header_shell_layout.addWidget(self.header)
+        root.addWidget(header_shell, 64)
 
         self.body = QWidget()
+        self.body.setObjectName("TransparentPanel")
         body_layout = QVBoxLayout(self.body)
-        body_layout.setContentsMargins(3, 2, 3, 3)
-        body_layout.setSpacing(10)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
         root.addWidget(self.body, 1)
+        body_layout.addSpacing(13)
 
-        upper = QHBoxLayout()
-        upper.setSpacing(10)
+        upper_shell = QWidget()
+        upper_shell.setObjectName("TransparentPanel")
+        upper = QHBoxLayout(upper_shell)
+        upper.setContentsMargins(20, 0, 9, 0)
+        upper.setSpacing(6)
 
         audio_card = QFrame()
         audio_card.setObjectName("AudioCard")
-        audio_card.setFixedWidth(145)
         audio_layout = QHBoxLayout(audio_card)
-        audio_layout.setContentsMargins(8, 12, 7, 12)
-        audio_layout.setSpacing(7)
+        audio_layout.setContentsMargins(18, 24, 12, 25)
+        audio_layout.setSpacing(14)
 
         audio_buttons = QVBoxLayout()
-        audio_buttons.setSpacing(7)
-        self.microphone_button = self._icon_button("🎙", "AudioSourceButton")
+        audio_buttons.setSpacing(8)
+        self.microphone_button = self._icon_button(
+            object_name="AudioSourceButton", asset="microphone.png", icon_size=(53, 53)
+        )
+        self.microphone_button.setFixedSize(53, 53)
         self.microphone_button.setToolTip("Enable or disable microphone capture")
         self.microphone_button.clicked.connect(partial(self._toggle_audio_source, "microphone"))
-        audio_buttons.addWidget(self.microphone_button)
-        self.speaker_button = self._icon_button("🔊", "AudioSourceButton")
+        audio_buttons.addWidget(
+            self.microphone_button, 0, Qt.AlignmentFlag.AlignHCenter
+        )
+        self.speaker_button = self._icon_button(
+            object_name="AudioSourceButton", asset="speaker.png", icon_size=(68, 68)
+        )
+        self.speaker_button.setFixedSize(68, 68)
         self.speaker_button.setToolTip("Enable or disable meeting-audio capture")
         self.speaker_button.clicked.connect(partial(self._toggle_audio_source, "loopback"))
-        audio_buttons.addWidget(self.speaker_button)
+        audio_buttons.addWidget(
+            self.speaker_button, 0, Qt.AlignmentFlag.AlignHCenter
+        )
         audio_layout.addLayout(audio_buttons)
 
-        self.model_badge = QPushButton("gpt-5.6")
-        self.model_badge.setObjectName("ModelBadge")
-        self.model_badge.setFixedWidth(62)
-        self.model_badge.setToolTip("Open answer and model settings")
-        self.model_badge.clicked.connect(self.open_settings)
-        audio_layout.addWidget(self.model_badge, 1, Qt.AlignmentFlag.AlignVCenter)
-        upper.addWidget(audio_card)
+        self.live_button = QPushButton("START")
+        self.live_button.setObjectName("LiveButton")
+        self.live_button.setFixedSize(54, 27)
+        self.live_button.setToolTip("Start listening")
+        self.live_button.clicked.connect(self.toggle_session)
+        audio_layout.addWidget(self.live_button, 0, Qt.AlignmentFlag.AlignCenter)
+        self.session_button = self.live_button
+        upper.addWidget(audio_card, 166)
 
         question_card = QFrame()
         question_card.setObjectName("QuestionCard")
         question_layout = QVBoxLayout(question_card)
-        question_layout.setContentsMargins(12, 10, 12, 10)
+        question_layout.setContentsMargins(18, 10, 34, 13)
         question_layout.setSpacing(5)
         self.question_input = QPlainTextEdit()
         self.question_input.setObjectName("QuestionInput")
@@ -250,31 +296,45 @@ class MainWindow(QMainWindow):
         question_layout.addWidget(self.question_input, 1)
 
         question_actions = QHBoxLayout()
-        question_actions.setSpacing(6)
+        question_actions.setSpacing(0)
+        question_actions.addSpacing(31)
         self.ask_button = QPushButton("Answer")
         self.ask_button.setObjectName("AnswerButton")
+        self.ask_button.setFixedSize(83, 29)
         self.ask_button.clicked.connect(self.generate_answer)
         question_actions.addWidget(self.ask_button)
         question_actions.addStretch()
-        self.session_button = QPushButton("•••")
-        self.session_button.setObjectName("SessionPill")
-        self.session_button.setToolTip("Start or stop listening")
-        self.session_button.clicked.connect(self.toggle_session)
-        question_actions.addWidget(self.session_button)
+        self.transcription_indicator = QLabel()
+        self.transcription_indicator.setObjectName("TranscriptionIndicator")
+        self.transcription_indicator.setFixedSize(59, 29)
+        indicator = QPixmap(str(resource_path("transcribing.png")))
+        self.transcription_indicator.setPixmap(
+            indicator.scaled(59, 59, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        )
+        self.transcription_indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.transcription_indicator.hide()
+        question_actions.addWidget(self.transcription_indicator)
         question_actions.addStretch()
-        clear_button = QPushButton("Clear")
-        clear_button.setObjectName("ClearButton")
-        clear_button.clicked.connect(self._clear_workspace)
-        question_actions.addWidget(clear_button)
+        self.clear_button = QPushButton("Clear")
+        self.clear_button.setObjectName("ClearButton")
+        self.clear_button.setFixedSize(83, 29)
+        self.clear_button.clicked.connect(self._clear_workspace)
+        question_actions.addWidget(self.clear_button)
         question_layout.addLayout(question_actions)
-        upper.addWidget(question_card, 1)
-        body_layout.addLayout(upper, 0)
+        upper.addWidget(question_card, 350)
+        body_layout.addWidget(upper_shell, 178)
+        body_layout.addSpacing(13)
 
+        answer_shell = QWidget()
+        answer_shell.setObjectName("TransparentPanel")
+        answer_shell_layout = QHBoxLayout(answer_shell)
+        answer_shell_layout.setContentsMargins(10, 0, 9, 0)
+        answer_shell_layout.setSpacing(0)
         answer_card = QFrame()
         answer_card.setObjectName("AnswerCard")
         answer_layout = QVBoxLayout(answer_card)
-        answer_layout.setContentsMargins(10, 8, 10, 10)
-        answer_layout.setSpacing(7)
+        answer_layout.setContentsMargins(10, 8, 9, 16)
+        answer_layout.setSpacing(0)
         self.error_banner = QLabel("")
         self.error_banner.setObjectName("PopupError")
         self.error_banner.setWordWrap(True)
@@ -287,32 +347,54 @@ class MainWindow(QMainWindow):
         answer_layout.addWidget(self.answer_view, 1)
 
         toggles = QHBoxLayout()
-        toggles.addStretch()
+        toggles.setContentsMargins(24, 0, 32, 0)
+        toggles.setSpacing(0)
+        self.model_badge = QPushButton("gpt-5.6")
+        self.model_badge.setObjectName("ModelBadge")
+        self.model_badge.setFixedSize(68, 34)
+        self.model_badge.setToolTip("Open answer and model settings")
+        self.model_badge.clicked.connect(self.open_settings)
+        toggles.addWidget(self.model_badge, 0, Qt.AlignmentFlag.AlignVCenter)
+        toggles.addStretch(128)
         auto_label = QLabel("Auto answer")
         auto_label.setObjectName("ToggleLabel")
+        auto_label.setFixedWidth(87)
+        auto_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         toggles.addWidget(auto_label)
+        toggles.addSpacing(8)
         self.auto_answer_switch = ToggleSwitch()
         self.auto_answer_switch.setChecked(self.config.auto_generate)
         self.auto_answer_switch.setToolTip("Generate an answer when a question is detected")
         self.auto_answer_switch.toggled.connect(self._set_auto_answer)
         toggles.addWidget(self.auto_answer_switch)
-        toggles.addSpacing(10)
+        toggles.addSpacing(15)
         stealth_label = QLabel("Stealth")
         stealth_label.setObjectName("ToggleLabel")
+        stealth_label.setFixedWidth(49)
+        stealth_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         toggles.addWidget(stealth_label)
+        toggles.addSpacing(12)
         self.stealth_switch = ToggleSwitch()
-        self.stealth_switch.setToolTip("Reserved for a future ClearCue feature")
+        self.stealth_switch.setToolTip("Reserved for a future prxmpt feature")
         toggles.addWidget(self.stealth_switch)
-        toggles.addSpacing(4)
         answer_layout.addLayout(toggles)
-        body_layout.addWidget(answer_card, 1)
+        answer_shell_layout.addWidget(answer_card)
+        body_layout.addWidget(answer_shell, 393)
+        body_layout.addSpacing(11)
 
+        history_shell = QWidget()
+        history_shell.setObjectName("TransparentPanel")
+        history_shell_layout = QHBoxLayout(history_shell)
+        history_shell_layout.setContentsMargins(8, 0, 6, 0)
+        history_shell_layout.setSpacing(0)
         self.history_card = QFrame()
         self.history_card.setObjectName("HistoryCard")
         self.history_layout = QVBoxLayout(self.history_card)
-        self.history_layout.setContentsMargins(5, 4, 5, 4)
+        self.history_layout.setContentsMargins(0, 7, 0, 9)
         self.history_layout.setSpacing(0)
-        body_layout.addWidget(self.history_card, 0)
+        history_shell_layout.addWidget(self.history_card)
+        body_layout.addWidget(history_shell, 132)
+        body_layout.addSpacing(11)
 
     def _connect_signals(self) -> None:
         self.controller.transcript_ready.connect(self._show_transcript)
@@ -323,6 +405,7 @@ class MainWindow(QMainWindow):
         self.controller.source_state_changed.connect(self._show_source_state)
         self.controller.error_raised.connect(self._show_error)
         self.controller.session_state_changed.connect(self._session_state)
+        self.controller.transcribing_changed.connect(self._show_transcribing)
         self.updater.update_available.connect(self._show_update_available)
         self.updater.no_update.connect(self._show_no_update)
         self.updater.check_failed.connect(self._show_update_check_failed)
@@ -338,13 +421,13 @@ class MainWindow(QMainWindow):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             return
         tray = QSystemTrayIcon(self.windowIcon(), self)
-        tray.setToolTip("ClearCue")
+        tray.setToolTip("prxmpt")
         menu = QMenu(self)
-        show_action = QAction("Show ClearCue", menu)
+        show_action = QAction("Show prxmpt", menu)
         show_action.triggered.connect(self._bring_to_front)
         session_action = QAction("Start / stop listening", menu)
         session_action.triggered.connect(self.toggle_session)
-        quit_action = QAction("Quit ClearCue", menu)
+        quit_action = QAction("Quit prxmpt", menu)
         quit_action.triggered.connect(self.quit_application)
         menu.addAction(show_action)
         menu.addAction(session_action)
@@ -377,7 +460,7 @@ class MainWindow(QMainWindow):
         history.triggered.connect(self._open_full_history)
         menu.addSeparator()
         if self._available_release:
-            update = menu.addAction(f"Install ClearCue {self._available_release.version}")
+            update = menu.addAction(f"Install prxmpt {self._available_release.version}")
             update.triggered.connect(self._prompt_update_install)
             notes = menu.addAction("Open release notes")
             notes.triggered.connect(self._open_release_notes)
@@ -385,7 +468,7 @@ class MainWindow(QMainWindow):
             update = menu.addAction("Check for updates")
             update.triggered.connect(self.check_updates)
         menu.addSeparator()
-        quit_action = menu.addAction("Quit ClearCue")
+        quit_action = menu.addAction("Quit prxmpt")
         quit_action.triggered.connect(self.quit_application)
         menu.exec(self.settings_button.mapToGlobal(self.settings_button.rect().bottomLeft()))
 
@@ -430,6 +513,15 @@ class MainWindow(QMainWindow):
             "active",
             bool(self.config.speaker_enabled),
         )
+        for button, enabled in (
+            (self.microphone_button, self.config.microphone_enabled),
+            (self.speaker_button, self.config.speaker_enabled),
+        ):
+            effect = button.graphicsEffect()
+            if not isinstance(effect, QGraphicsOpacityEffect):
+                effect = QGraphicsOpacityEffect(button)
+                button.setGraphicsEffect(effect)
+            effect.setOpacity(1.0 if enabled else 0.38)
 
     def _toggle_audio_source(self, kind: str) -> None:
         if kind == "microphone":
@@ -510,6 +602,9 @@ class MainWindow(QMainWindow):
     def _show_status(self, message: str) -> None:
         self.session_button.setToolTip(message)
 
+    def _show_transcribing(self, active: bool) -> None:
+        self.transcription_indicator.setVisible(bool(active and self.controller.running))
+
     def _show_level(self, source: str, value: float) -> None:
         button = self.speaker_button if source == "Interviewer" else self.microphone_button
         _set_dynamic_property(button, "signal", value >= 0.035)
@@ -529,10 +624,11 @@ class MainWindow(QMainWindow):
         button.setToolTip(message)
 
     def _session_state(self, running: bool) -> None:
-        self.session_button.setText("● LIVE" if running else "•••")
+        self.session_button.setText("LIVE" if running else "START")
         self.session_button.setToolTip("Stop listening" if running else "Start listening")
         _set_dynamic_property(self.session_button, "running", running)
         if not running:
+            self.transcription_indicator.hide()
             for button in (self.microphone_button, self.speaker_button):
                 _set_dynamic_property(button, "signal", False)
                 _set_dynamic_property(button, "sourceState", "off")
@@ -556,26 +652,46 @@ class MainWindow(QMainWindow):
             row.setObjectName("MeetingRow")
             row.setProperty("last", index == len(sessions) - 1)
             layout = QHBoxLayout(row)
-            layout.setContentsMargins(14, 0, 12, 0)
-            layout.setSpacing(5)
+            layout.setContentsMargins(37, 0, 31, 0)
+            layout.setSpacing(0)
             title = QLabel(session_display_title(session))
             title.setObjectName("MeetingTitle")
-            layout.addWidget(title, 1)
+            title.setFixedWidth(219)
+            layout.addWidget(title)
+            layout.addSpacing(5)
             stamp = QLabel(session_display_time(session.started_at))
             stamp.setObjectName("MeetingTime")
-            stamp.setFixedWidth(52)
+            stamp.setFixedWidth(60)
             layout.addWidget(stamp)
-            transcript = self._icon_button("📄", "MeetingTranscript")
+            layout.addStretch()
+            transcript = self._icon_button(
+                object_name="MeetingTranscript",
+                asset="meeting-transcript.png",
+                icon_size=(25, 25),
+            )
             transcript.setToolTip("View transcript")
             transcript.clicked.connect(partial(self._view_session_content, session.id, "transcript"))
-            notes = self._icon_button("▤", "MeetingNotes")
+            notes = self._icon_button(
+                object_name="MeetingNotes",
+                asset="meeting-notes.png",
+                icon_size=(26, 26),
+            )
             notes.setToolTip("View generated answers and notes")
             notes.clicked.connect(partial(self._view_session_content, session.id, "answers"))
-            delete = self._icon_button("✕", "MeetingDelete")
+            delete = self._icon_button(
+                object_name="MeetingDelete",
+                asset="meeting-delete.png",
+                icon_size=(25, 25),
+            )
             delete.setToolTip("Delete meeting")
             delete.clicked.connect(partial(self._delete_session, session.id))
-            for button in (transcript, notes, delete):
-                layout.addWidget(button)
+            transcript.setFixedSize(25, 25)
+            notes.setFixedSize(26, 26)
+            delete.setFixedSize(25, 25)
+            layout.addWidget(transcript)
+            layout.addSpacing(1)
+            layout.addWidget(notes)
+            layout.addWidget(delete)
             self.history_layout.addWidget(row)
 
     def _view_session_content(self, session_id: int, mode: str) -> None:
@@ -594,7 +710,7 @@ class MainWindow(QMainWindow):
     def check_updates(self) -> None:
         self._manual_update_check = True
         self.session_button.setText("CHECK")
-        self.session_button.setToolTip("Checking for ClearCue updates…")
+        self.session_button.setToolTip("Checking for prxmpt updates…")
         self.updater.check_for_updates()
 
     def _automatic_update_check(self) -> None:
@@ -606,13 +722,13 @@ class MainWindow(QMainWindow):
         self._manual_update_check = False
         self._session_state(self.controller.running)
         self.settings_button.setToolTip(
-            f"ClearCue {release.version} is available — open this menu to install"
+            f"prxmpt {release.version} is available — open this menu to install"
         )
         _set_dynamic_property(self.settings_button, "updateAvailable", True)
         if self.tray:
             self.tray.showMessage(
-                "ClearCue update available",
-                f"Version {release.version} is ready. Open ClearCue settings to install it.",
+                "prxmpt update available",
+                f"Version {release.version} is ready. Open prxmpt settings to install it.",
                 QSystemTrayIcon.MessageIcon.Information,
                 8000,
             )
@@ -621,8 +737,8 @@ class MainWindow(QMainWindow):
         if self._manual_update_check:
             QMessageBox.information(
                 self,
-                "ClearCue updates",
-                f"ClearCue {current_version} is the latest published version.",
+                "prxmpt updates",
+                f"prxmpt {current_version} is the latest published version.",
             )
         self._manual_update_check = False
         _set_dynamic_property(self.settings_button, "updateAvailable", False)
@@ -643,8 +759,8 @@ class MainWindow(QMainWindow):
             return
         if QMessageBox.question(
             self,
-            "Install ClearCue update",
-            f"Download and install ClearCue {self._available_release.version}?",
+            "Install prxmpt update",
+            f"Download and install prxmpt {self._available_release.version}?",
         ) == QMessageBox.StandardButton.Yes:
             self.session_button.setText("0%")
             self.updater.download(self._available_release)
@@ -681,16 +797,14 @@ class MainWindow(QMainWindow):
             self.body.show()
             self.setMinimumHeight(438)
             self.resize(self._expanded_size[0], self._expanded_size[1])
-            self.collapse_button.setText("◉̸")
-            self.collapse_button.setToolTip("Collapse ClearCue to the title bar")
+            self.collapse_button.setToolTip("Collapse prxmpt to the title bar")
             self._collapsed = False
             return
         self._expanded_size = (self.width(), self.height())
         self.body.hide()
         self.setMinimumHeight(72)
         self.resize(self.width(), 80)
-        self.collapse_button.setText("◉")
-        self.collapse_button.setToolTip("Expand ClearCue")
+        self.collapse_button.setToolTip("Expand prxmpt")
         self._collapsed = True
 
     def toggle_popup(self) -> None:
@@ -703,7 +817,7 @@ class MainWindow(QMainWindow):
         self.hide()
         if self.tray and not self._tray_notice_shown:
             self.tray.showMessage(
-                "ClearCue is still running",
+                "prxmpt is still running",
                 "Use the tray icon or Ctrl+Alt+O to reopen it.",
                 QSystemTrayIcon.MessageIcon.Information,
                 5000,

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 
-SERVICE_NAME = "ClearCue Coach"
+SERVICE_NAME = "prxmpt Coach"
+LEGACY_SERVICE_NAME = "ClearCue Coach"
 
 
 class SecretStoreError(RuntimeError):
@@ -12,7 +13,13 @@ def get_openai_key() -> str:
     try:
         import keyring
 
-        return keyring.get_password(SERVICE_NAME, "openai_api_key") or ""
+        current = keyring.get_password(SERVICE_NAME, "openai_api_key") or ""
+        if current:
+            return current
+        legacy = keyring.get_password(LEGACY_SERVICE_NAME, "openai_api_key") or ""
+        if legacy:
+            keyring.set_password(SERVICE_NAME, "openai_api_key", legacy)
+        return legacy
     except Exception as exc:  # platform keyring failures vary
         raise SecretStoreError(f"Windows Credential Manager could not be read: {exc}") from exc
 
@@ -30,4 +37,3 @@ def set_openai_key(value: str) -> None:
                 pass
     except Exception as exc:
         raise SecretStoreError(f"Windows Credential Manager could not be updated: {exc}") from exc
-

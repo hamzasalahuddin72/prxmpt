@@ -11,11 +11,11 @@ if errorlevel 1 (
 )
 
 if not exist ".venv\Scripts\python.exe" (
-  echo Creating the ClearCue environment...
+  echo Creating the prxmpt environment...
   py -3.12 -m venv .venv 2>nul
   if errorlevel 1 py -3.13 -m venv .venv
   if not exist ".venv\Scripts\python.exe" (
-    echo ClearCue could not create a Python 3.12 or 3.13 environment.
+    echo prxmpt could not create a Python 3.12 or 3.13 environment.
     pause
     exit /b 1
   )

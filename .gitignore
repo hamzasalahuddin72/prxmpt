@@ -10,6 +10,7 @@ htmlcov/
 build/work/
 build/spec-work/
 build/lib/
+build/models/
 src/*.egg-info/
 dist/
 installer/output/

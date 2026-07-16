@@ -37,7 +37,7 @@ class ContextDialog(QDialog):
         layout = QVBoxLayout(self)
         intro = QLabel(
             "Add only information you can defend: your CV, job description, project notes "
-            "and STAR examples. ClearCue uses these files to ground its suggestions."
+            "and STAR examples. prxmpt uses these files to ground its suggestions."
         )
         intro.setWordWrap(True)
         intro.setObjectName("Muted")

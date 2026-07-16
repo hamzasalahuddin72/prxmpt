@@ -1,12 +1,14 @@
 # Third-party notices
 
-ClearCue depends on third-party packages installed separately with `pip`.
+prxmpt depends on third-party packages installed separately with `pip`.
 Their licences remain with their respective authors. The primary packages are:
 
 - Qt for Python / PySide6 — LGPLv3/GPLv3/commercial licensing
 - SoundCard — BSD 3-Clause
 - python-sounddevice / PortAudio bindings — MIT
 - faster-whisper — MIT
+- bundled `Systran/faster-whisper-tiny.en` converted Whisper weights — MIT
+- Hugging Face Hub client — Apache 2.0
 - CTranslate2 — MIT
 - WebRTC VAD wheels — MIT/BSD-style upstream components
 - OpenAI Python SDK — Apache 2.0

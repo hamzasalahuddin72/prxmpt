@@ -20,7 +20,7 @@ from clearcue.paths import updates_dir
 
 LOGGER = logging.getLogger(__name__)
 LATEST_RELEASE_URL = "https://api.github.com/repos/hamzasalahuddin72/clear-cue/releases/latest"
-USER_AGENT = f"ClearCue/{__version__} Windows updater"
+USER_AGENT = f"prxmpt/{__version__} Windows updater"
 GITHUB_API_VERSION = "2026-03-10"
 SHA256_PATTERN = re.compile(r"^sha256:([0-9a-fA-F]{64})$")
 
@@ -61,17 +61,22 @@ def parse_release(payload: dict) -> ReleaseInfo:
     if not isinstance(assets, list):
         raise ValueError("The release does not contain downloadable assets.")
 
-    expected_installer = f"clearcueupdate_{version}.exe".lower()
-    candidates = []
+    expected_installers = (
+        f"prxmptupdate_{version}.exe".lower(),
+        # v1.0.8 keeps the legacy asset name so installed ClearCue 1.0.7
+        # clients can discover the one-time rename update.
+        f"clearcueupdate_{version}.exe".lower(),
+    )
+    candidates: dict[str, dict] = {}
     for asset in assets:
         if not isinstance(asset, dict):
             continue
         name = str(asset.get("name") or "")
-        if name.lower() == expected_installer:
-            candidates.append(asset)
+        if name.lower() in expected_installers:
+            candidates[name.lower()] = asset
     if not candidates:
-        raise ValueError("The release does not contain a ClearCue update installer.")
-    asset = candidates[0]
+        raise ValueError("The release does not contain a prxmpt update installer.")
+    asset = next(candidates[name] for name in expected_installers if name in candidates)
 
     digest = str(asset.get("digest") or "")
     match = SHA256_PATTERN.fullmatch(digest)
@@ -84,7 +89,7 @@ def parse_release(payload: dict) -> ReleaseInfo:
     return ReleaseInfo(
         version=version,
         tag=tag,
-        title=str(payload.get("name") or f"ClearCue {tag}"),
+        title=str(payload.get("name") or f"prxmpt {tag}"),
         notes=str(payload.get("body") or "No release notes were provided."),
         page_url=str(payload.get("html_url") or ""),
         installer_name=installer_name,
@@ -155,7 +160,7 @@ class UpdateService(QObject):
                 self.no_update.emit(__version__)
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
-                message = "No published ClearCue release is available yet."
+                message = "No published prxmpt release is available yet."
             else:
                 message = f"Update check failed: GitHub returned HTTP {exc.code}."
             LOGGER.info(message)
@@ -220,9 +225,10 @@ class UpdateService(QObject):
             if digest.hexdigest().lower() != release.sha256:
                 raise RuntimeError("The update failed SHA-256 verification and was deleted.")
             os.replace(temporary, destination)
-            for old_installer in updates_dir().glob("ClearCueUpdate_*.exe"):
-                if old_installer != destination:
-                    old_installer.unlink(missing_ok=True)
+            for pattern in ("ClearCueUpdate_*.exe", "prxmptUpdate_*.exe"):
+                for old_installer in updates_dir().glob(pattern):
+                    if old_installer != destination:
+                        old_installer.unlink(missing_ok=True)
             self.download_progress.emit(100)
             self.installer_ready.emit(str(destination))
         except Exception as exc:

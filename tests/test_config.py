@@ -27,7 +27,7 @@ def test_legacy_config_migrates_to_performance_defaults(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     config = ConfigStore(path).load()
-    assert config.config_version == 4
+    assert config.config_version == 5
     assert config.whisper_model == "tiny.en"
     assert config.overlay_opacity == 1.0
     assert config.speaker_id == ""
@@ -43,7 +43,7 @@ def test_v2_config_migrates_microphone_and_gpu_without_resetting_loopback(tmp_pa
         encoding="utf-8",
     )
     config = ConfigStore(path).load()
-    assert config.config_version == 4
+    assert config.config_version == 5
     assert config.speaker_id == "working-loopback"
     assert config.microphone_id == ""
     assert config.whisper_device == "cpu"
@@ -59,9 +59,24 @@ def test_v3_config_migrates_to_popup_audio_defaults(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     config = ConfigStore(path).load()
-    assert config.config_version == 4
+    assert config.config_version == 5
     assert config.speaker_enabled is True
     assert config.microphone_enabled is True
-    assert config.popup_width == 520
-    assert config.popup_height == 760
+    assert config.popup_width == 551
+    assert config.popup_height == 827
     assert config.popup_drag_locked is True
+
+
+def test_v4_config_adopts_bundled_model_and_final_reference_size(tmp_path: Path) -> None:
+    path = tmp_path / "settings.json"
+    path.write_text(
+        '{"config_version": 4, "whisper_model": "base.en", '
+        '"whisper_device": "cuda", "popup_width": 520, "popup_height": 760}',
+        encoding="utf-8",
+    )
+    config = ConfigStore(path).load()
+    assert config.config_version == 5
+    assert config.whisper_model == "tiny.en"
+    assert config.whisper_device == "cpu"
+    assert config.whisper_compute_type == "int8"
+    assert (config.popup_width, config.popup_height) == (551, 827)

@@ -17,6 +17,7 @@ class AudioCoordinator:
         on_level: Callable[[str, float], None] | None = None,
         on_error: Callable[[str], None] | None = None,
         on_source_state: Callable[[str, bool, str], None] | None = None,
+        on_transcribing: Callable[[bool], None] | None = None,
     ) -> None:
         self.config = config
         self.on_transcript = on_transcript
@@ -26,6 +27,7 @@ class AudioCoordinator:
         self.on_source_state = on_source_state or (
             lambda kind, available, message: None
         )
+        self.on_transcribing = on_transcribing or (lambda active: None)
         self.transcriber = TranscriptionWorker(
             config.whisper_model,
             config.whisper_device,
@@ -33,6 +35,7 @@ class AudioCoordinator:
             self.on_transcript,
             self.on_status,
             self.on_error,
+            self.on_transcribing,
         )
         self.segmenters = {
             "Interviewer": SpeechSegmenter(
@@ -105,6 +108,7 @@ class AudioCoordinator:
         for segmenter in self.segmenters.values():
             segmenter.flush()
         self.transcriber.stop()
+        self.on_transcribing(False)
         self.captures.clear()
         self._running = False
         self.on_status("Session stopped")

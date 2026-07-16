@@ -1,6 +1,6 @@
-# ClearCue installation and first-run guide
+# prxmpt installation and first-run guide
 
-ClearCue is a Windows interview-practice and disclosed meeting coach. It captures
+prxmpt is a Windows interview-practice and disclosed meeting coach. It captures
 the Windows output device and microphone, transcribes speech locally, detects
 questions and builds suggestions grounded in context you provide.
 
@@ -13,7 +13,7 @@ where required.
 - Windows 10 or Windows 11, 64-bit
 - At least 8 GB RAM; 16 GB recommended for the larger speech models
 - Headphones strongly recommended
-- Internet access for the initial Python/package and Whisper-model downloads
+- Internet access for updates and optional cloud answer providers
 - Optional: OpenAI API key or a local Ollama installation
 - Optional: VoiceMeeter for advanced routing; it is not required or bundled
 
@@ -24,14 +24,14 @@ This is the quickest way to test the application before producing an installer.
 1. Install 64-bit Python 3.12 from <https://www.python.org/downloads/windows/>.
 2. During Python installation, select **Add Python to PATH** and install the
    Python Launcher.
-3. Extract the ClearCue ZIP to a normal folder such as `Documents\ClearCue`.
+3. Extract the prxmpt ZIP to a normal folder such as `Documents\prxmpt`.
 4. Double-click `INSTALL_AND_RUN.bat`.
 5. Wait while the private environment and packages are installed.
 
 Future launches can use the same `INSTALL_AND_RUN.bat`. It reuses the existing
 environment rather than downloading everything again.
 
-## Option 2 — create the ClearCue 1.0.7 update installer
+## Option 2 — create the prxmpt 1.0.8 update installer
 
 The supplied build creates a self-contained Windows application. End users do
 not need Python after installing that build.
@@ -43,14 +43,16 @@ not need Python after installing that build.
    restart it after Python installation, close the window and double-click the
    builder again.
 4. The script verifies or repairs its isolated build environment, installs build
-   dependencies, runs the tests and builds the PyInstaller application.
+   dependencies, runs the tests, downloads and validates `tiny.en`, and builds
+   the PyInstaller application. The first model preparation is the longest step;
+   later local builds reuse the prepared files.
 5. If Inno Setup is missing, the script installs it through Windows Package
    Manager. Approve the Windows prompt if one appears. If Windows Package
    Manager is unavailable, install Inno Setup manually from
    <https://jrsoftware.org/isdl.php> and run the builder again.
 6. The finished installer appears at:
 
-   `installer\output\ClearCueUpdate_1.0.7.exe`
+   `installer\output\ClearCueUpdate_1.0.8.exe`
 
 You can also run the build directly from PowerShell:
 
@@ -61,7 +63,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 PyInstaller must build a Windows executable on Windows. The included GitHub
 Actions workflow can perform the same build on a Windows runner and return the
-installer as a workflow artifact. Pushing a version tag such as `v1.0.7` also
+installer as a workflow artifact. Pushing a version tag such as `v1.0.8` also
 publishes the installer as a permanent GitHub Release for the in-app updater.
 
 If a previous build was interrupted and left a broken `.venv-build` folder, the
@@ -82,7 +84,7 @@ the role you are practising. Import:
 - Company and role notes
 
 Supported files are PDF, DOCX, TXT and Markdown. Text is stored locally in the
-ClearCue database.
+prxmpt database.
 
 ### 2. Configure audio
 
@@ -92,7 +94,7 @@ Open **Settings → Audio**.
   Teams, Zoom or your browser.
 - **Your microphone:** select the microphone you will speak into.
 
-ClearCue uses Windows WASAPI loopback for meeting audio and PortAudio for the
+prxmpt uses Windows WASAPI loopback for meeting audio and PortAudio for the
 microphone. This hybrid backend avoids the SoundCard format assertion produced
 by some USB, headset and virtual microphone drivers. If VoiceMeeter is installed,
 its virtual devices appear in the same lists and can be selected normally.
@@ -108,17 +110,19 @@ The recommended default for an ordinary laptop is:
 - Device: CPU
 - Compute type: `int8`
 
-The model downloads the first time a listening session starts. This can take a
-few minutes. Later sessions use the cached model under the user's local ClearCue
-application-data folder.
+The installer includes `tiny.en`, so the default model does not download on first
+use and does not depend on a Hugging Face cache. Selecting `base.en` or `small.en`
+manually still downloads that optional model once. Source-only launches through
+`INSTALL_AND_RUN.bat` also use the normal model cache unless you have built the
+bundled snapshot.
 
 For a compatible NVIDIA GPU, try CUDA and `float16`. If the CUDA runtime or its
-DLLs are unavailable, ClearCue automatically reloads the current model on
+DLLs are unavailable, prxmpt automatically reloads the current model on
 CPU/`int8` and retries the interrupted segment once.
 
 ### 4. Updates
 
-ClearCue checks the public GitHub Release feed shortly after launch and every
+prxmpt checks the public GitHub Release feed shortly after launch and every
 six hours while running. A Windows tray notification appears when a stable newer
 version exists. Open the gear menu and choose the available update to download it,
 verify its SHA-256 digest, stop listening safely and update in place. Profiles,
@@ -130,7 +134,7 @@ confirmation.
 
 ### 5. Choose an answer provider
 
-ClearCue offers three modes:
+prxmpt offers three modes:
 
 1. **Local grounded outline:** no API key and no context leaves the computer.
    This produces verified talking points rather than a polished AI response.
@@ -146,13 +150,14 @@ OpenAI API usage is billed separately from ChatGPT subscriptions.
 1. Start the Teams, Zoom or browser test call.
 2. Leave the blue microphone and speaker buttons enabled for both sources, or
    disable either source by clicking its button.
-3. Click the centre three-dot pill. Confirm permission the first time ClearCue
-   asks; the pill displays `LIVE` while listening.
+3. Click **START** beside the audio controls. Confirm permission the first time
+   prxmpt asks; the button displays `LIVE` while listening.
 4. Detected questions appear in the upper question field.
 5. Click **Answer** or enable the **Auto answer** switch.
-6. Click the `LIVE` pill again when finished. Recent meetings appear at the
+6. The three-dot indicator appears only while speech is actively being
+   transcribed. Click `LIVE` again when finished. Recent meetings appear at the
    bottom with transcript, generated-answer and delete controls.
-7. The red X hides ClearCue in the system tray; use the tray icon to reopen or
+7. The red X hides prxmpt in the system tray; use the tray icon to reopen or
    quit it.
 
 Global shortcuts:
@@ -181,7 +186,7 @@ Global shortcuts:
 - Avoid changing the Windows output device after starting a session.
 - Close applications holding the device in exclusive mode.
 - If direct loopback remains unreliable, configure VoiceMeeter and select its
-  virtual output from ClearCue.
+  virtual output from prxmpt.
 
 ### Bluetooth headset behaves strangely
 
@@ -191,15 +196,16 @@ more reliable simultaneous playback and microphone capture.
 
 ### First transcription takes a long time
 
-The local model is downloading or loading. Keep `tiny.en` for minimum latency,
-or try `base.en` when you want more accuracy and the computer can keep up. If an
-interrupted download leaves `model.bin` missing, ClearCue 1.0.7 removes only the
-incomplete model cache and retries the download once.
+The bundled model loads from disk when listening starts; it should not download.
+Keep `tiny.en` with CPU/`int8` for minimum latency. If the application reports
+that bundled `model.bin` is missing, reinstall v1.0.8 because the installer is
+incomplete or was modified. Optional `base.en` and `small.en` models still use
+the online cache and prxmpt repairs an interrupted cache once.
 
 ### CUDA or CTranslate2 error
 
 Select CPU and `int8`. GPU mode requires compatible NVIDIA libraries that are
-not bundled by the basic installer. ClearCue 1.0.7 also performs this fallback
+not bundled by the basic installer. prxmpt 1.0.8 also performs this fallback
 automatically if CUDA fails during the first inference.
 
 ### OpenAI answer fails
@@ -212,13 +218,17 @@ automatically if CUDA fails during the first inference.
 ### Windows SmartScreen warning
 
 Locally built applications are unsigned. For public distribution, sign both
-`ClearCue.exe` and `ClearCueUpdate_1.0.7.exe` with an Authenticode code-signing
+`prxmpt.exe` and `ClearCueUpdate_1.0.8.exe` with an Authenticode code-signing
 certificate. Do not advise users to bypass organisational security controls.
 
 ## Uninstalling
 
 Installer builds can be removed from **Windows Settings → Apps → Installed
-apps → ClearCue**. The uninstaller removes program files. User-created context,
-settings and history remain in the local ClearCue application-data directory so
+apps → prxmpt**. The uninstaller removes program files. User-created context,
+settings and history remain in the local prxmpt application-data directory so
 an update does not delete them. Remove that folder manually only if you also
-want to erase all ClearCue data.
+want to erase all prxmpt data.
+
+When upgrading from ClearCue 1.0.7, prxmpt copies the existing settings and
+SQLite history into `%LOCALAPPDATA%\prxmpt` and migrates the saved OpenAI
+credential without deleting the legacy data.
