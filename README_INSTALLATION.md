@@ -31,7 +31,7 @@ This is the quickest way to test the application before producing an installer.
 Future launches can use the same `INSTALL_AND_RUN.bat`. It reuses the existing
 environment rather than downloading everything again.
 
-## Option 2 — create the ClearCue 1.0.5 update installer
+## Option 2 — create the ClearCue 1.0.6 update installer
 
 The supplied build creates a self-contained Windows application. End users do
 not need Python after installing that build.
@@ -50,7 +50,7 @@ not need Python after installing that build.
    <https://jrsoftware.org/isdl.php> and run the builder again.
 6. The finished installer appears at:
 
-   `installer\output\ClearCueUpdate_1.0.5.exe`
+   `installer\output\ClearCueUpdate_1.0.6.exe`
 
 You can also run the build directly from PowerShell:
 
@@ -61,7 +61,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 PyInstaller must build a Windows executable on Windows. The included GitHub
 Actions workflow can perform the same build on a Windows runner and return the
-installer as a workflow artifact.
+installer as a workflow artifact. Pushing a version tag such as `v1.0.6` also
+publishes the installer as a permanent GitHub Release for the in-app updater.
 
 If a previous build was interrupted and left a broken `.venv-build` folder, the
 builder now detects and replaces that folder automatically. You do not need to
@@ -90,9 +91,10 @@ Open **Settings → Audio**.
   Teams, Zoom or your browser.
 - **Your microphone:** select the microphone you will speak into.
 
-ClearCue uses Windows WASAPI loopback for meeting audio. If VoiceMeeter is
-already installed, its virtual devices appear in the same lists and can be
-selected normally.
+ClearCue uses Windows WASAPI loopback for meeting audio and PortAudio for the
+microphone. This hybrid backend avoids the SoundCard format assertion produced
+by some USB, headset and virtual microphone drivers. If VoiceMeeter is installed,
+its virtual devices appear in the same lists and can be selected normally.
 
 Use headphones. Playing meeting audio through speakers may cause the microphone
 to hear it again and produce duplicate transcripts.
@@ -109,10 +111,23 @@ The model downloads the first time a listening session starts. This can take a
 few minutes. Later sessions use the cached model under the user's local ClearCue
 application-data folder.
 
-For a compatible NVIDIA GPU, try CUDA and `float16`. Return to CPU/`int8` if the
-CUDA runtime is unavailable.
+For a compatible NVIDIA GPU, try CUDA and `float16`. If the CUDA runtime or its
+DLLs are unavailable, ClearCue automatically reloads the current model on
+CPU/`int8` and retries the interrupted segment once.
 
-### 4. Choose an answer provider
+### 4. Updates
+
+ClearCue checks the public GitHub Release feed shortly after launch and every
+six hours while running. A high-contrast banner appears when a stable newer
+version exists. Click **Download and install** to download the installer,
+verify its SHA-256 digest, stop listening safely and update in place. Profiles,
+context, settings, model files and history are preserved.
+
+Use the **Updates** button in the main window to check immediately. Automatic
+checks can be disabled under **Settings → Updates**. Update installation always
+requires confirmation.
+
+### 5. Choose an answer provider
 
 ClearCue offers three modes:
 
@@ -178,7 +193,8 @@ or try `base.en` when you want more accuracy and the computer can keep up.
 ### CUDA or CTranslate2 error
 
 Select CPU and `int8`. GPU mode requires compatible NVIDIA libraries that are
-not bundled by the basic installer.
+not bundled by the basic installer. ClearCue 1.0.6 also performs this fallback
+automatically if CUDA fails during the first inference.
 
 ### OpenAI answer fails
 
@@ -190,7 +206,7 @@ not bundled by the basic installer.
 ### Windows SmartScreen warning
 
 Locally built applications are unsigned. For public distribution, sign both
-`ClearCue.exe` and `ClearCueUpdate_1.0.5.exe` with an Authenticode code-signing
+`ClearCue.exe` and `ClearCueUpdate_1.0.6.exe` with an Authenticode code-signing
 certificate. Do not advise users to bypass organisational security controls.
 
 ## Uninstalling

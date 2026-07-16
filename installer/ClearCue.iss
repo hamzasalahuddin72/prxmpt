@@ -1,5 +1,5 @@
 #define MyAppName "ClearCue"
-#define MyAppVersion "1.0.5"
+#define MyAppVersion "1.0.6"
 #define MyAppPublisher "Hamza Salahuddin"
 #define MyAppExeName "ClearCue.exe"
 
@@ -13,7 +13,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=output
-OutputBaseFilename=ClearCueUpdate_1.0.5
+OutputBaseFilename=ClearCueUpdate_1.0.6
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -24,7 +24,7 @@ SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=yes
-VersionInfoVersion=1.0.5.0
+VersionInfoVersion=1.0.6.0
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -38,7 +38,7 @@ Source: "..\README_INSTALLATION.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\sample_context_template.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\PATCH_NOTES_1.0.5.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\PATCH_NOTES_1.0.6.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -48,3 +48,10 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait skipifdoesntexist; Check: RelaunchRequested
+
+[Code]
+function RelaunchRequested(): Boolean;
+begin
+  Result := CompareText(ExpandConstant('{param:RELAUNCH|0}'), '1') = 0;
+end;

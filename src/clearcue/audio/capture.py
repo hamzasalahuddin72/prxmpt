@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from clearcue.audio.devices import open_device
+from clearcue.audio.devices import open_device, open_input_stream
 
 
 LOGGER = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ TARGET_SAMPLE_RATE = 16_000
 
 
 def sample_rate_candidates(preferred: int) -> tuple[int, ...]:
-    """Return practical WASAPI rates, preserving order and removing duplicates."""
+    """Return practical Windows audio rates, preserving order and removing duplicates."""
     rates = (preferred, 48_000, 44_100, 16_000)
     return tuple(dict.fromkeys(rate for rate in rates if rate > 0))
 
@@ -52,6 +52,8 @@ class AudioCapture:
         self._thread: threading.Thread | None = None
         self._available = False
         self._last_state_message = ""
+        self._last_failure_log = 0.0
+        self._suppressed_failures = 0
 
     @property
     def running(self) -> bool:
@@ -99,17 +101,11 @@ class AudioCapture:
                         except Exception as exc:
                             message = " ".join(str(exc).split()) or type(exc).__name__
                             errors.append(f"{rate} Hz: {message}")
-                            LOGGER.warning(
-                                "%s capture attempt failed (device=%r, rate=%s): %s",
-                                self.kind,
-                                device_id or "default",
-                                rate,
-                                message,
-                            )
 
                 if self._stop.is_set():
                     return
                 detail = errors[-1] if errors else "Windows returned no audio data."
+                self._log_retry_cycle(len(errors), detail)
                 self._set_state(
                     False,
                     f"{self._display_name} unavailable; retrying automatically. {detail}",
@@ -128,7 +124,41 @@ class AudioCapture:
             if self._stop.is_set():
                 self._set_state(False, f"{self._display_name} stopped")
 
+    def _log_retry_cycle(self, attempt_count: int, detail: str) -> None:
+        """Keep diagnostics useful without writing hundreds of identical lines."""
+        self._suppressed_failures += max(1, attempt_count)
+        now = time.monotonic()
+        if self._last_failure_log and now - self._last_failure_log < 30.0:
+            return
+        LOGGER.warning(
+            "%s capture unavailable after %s attempt(s); last error: %s",
+            self.kind,
+            self._suppressed_failures,
+            detail,
+        )
+        self._last_failure_log = now
+        self._suppressed_failures = 0
+
     def _record(self, device_id: str, sample_rate: int) -> None:
+        if self.kind == "microphone":
+            self._record_microphone(device_id, sample_rate)
+            return
+        self._record_loopback(device_id, sample_rate)
+
+    def _record_microphone(self, device_id: str, sample_rate: int) -> None:
+        chunk_frames = max(320, int(sample_rate * 0.02))
+        with open_input_stream(device_id, sample_rate) as stream:
+            next_level_update = 0.0
+            while not self._stop.is_set():
+                data, overflowed = stream.read(chunk_frames)
+                if overflowed:
+                    LOGGER.debug("Microphone input overflowed; continuing with current audio")
+                self._process_chunk(data, sample_rate, next_level_update)
+                now = time.monotonic()
+                if now >= next_level_update:
+                    next_level_update = now + 0.1
+
+    def _record_loopback(self, device_id: str, sample_rate: int) -> None:
         device = open_device(device_id, self.kind)
         # SoundCard recommends numframes substantially smaller than blocksize for
         # low latency. Record all native channels and downmix here because its
@@ -148,17 +178,29 @@ class AudioCapture:
                         raise RuntimeError("The device opened but returned no audio frames.")
                     continue
                 empty_since = None
-                array = np.asarray(data, dtype=np.float32)
-                mono = array if array.ndim == 1 else np.mean(array, axis=1)
-                mono = np.nan_to_num(mono, nan=0.0, posinf=0.0, neginf=0.0)
+                self._process_chunk(data, sample_rate, next_level_update)
                 now = time.monotonic()
                 if now >= next_level_update:
-                    level = min(1.0, float(np.sqrt(np.mean(np.square(mono)))) * 8.0)
-                    self.on_level(level)
                     next_level_update = now + 0.1
-                self._set_state(True, f"{self._display_name} connected at {sample_rate} Hz")
-                try:
-                    self.on_audio(resample_linear(mono, sample_rate, TARGET_SAMPLE_RATE))
-                except Exception as exc:
-                    LOGGER.exception("Audio consumer rejected a %s chunk", self.kind)
-                    self.on_error(f"{self._display_name} processing recovered from an error: {exc}")
+
+    def _process_chunk(
+        self,
+        data: np.ndarray,
+        sample_rate: int,
+        next_level_update: float,
+    ) -> None:
+        if data is None or not len(data):
+            return
+        array = np.asarray(data, dtype=np.float32)
+        mono = array if array.ndim == 1 else np.mean(array, axis=1)
+        mono = np.nan_to_num(mono, nan=0.0, posinf=0.0, neginf=0.0)
+        now = time.monotonic()
+        if now >= next_level_update:
+            level = min(1.0, float(np.sqrt(np.mean(np.square(mono)))) * 8.0)
+            self.on_level(level)
+        self._set_state(True, f"{self._display_name} connected at {sample_rate} Hz")
+        try:
+            self.on_audio(resample_linear(mono, sample_rate, TARGET_SAMPLE_RATE))
+        except Exception as exc:
+            LOGGER.exception("Audio consumer rejected a %s chunk", self.kind)
+            self.on_error(f"{self._display_name} processing recovered from an error: {exc}")

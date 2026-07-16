@@ -7,7 +7,7 @@ from pathlib import Path
 from clearcue.paths import settings_path
 
 
-CURRENT_CONFIG_VERSION = 2
+CURRENT_CONFIG_VERSION = 3
 
 
 @dataclass(slots=True)
@@ -30,6 +30,7 @@ class AppConfig:
     overlay_height: int = 430
     consent_acknowledged: bool = False
     save_transcripts: bool = True
+    auto_check_updates: bool = True
 
 
 class ConfigStore:
@@ -44,7 +45,8 @@ class ConfigStore:
             allowed = {field.name for field in fields(AppConfig)}
             values = {key: value for key, value in raw.items() if key in allowed}
             config = AppConfig(**values)
-            if int(raw.get("config_version", 1)) < CURRENT_CONFIG_VERSION:
+            source_version = int(raw.get("config_version", 1))
+            if source_version < 2:
                 # v1.0.5 is a performance-first release. Existing installations
                 # used small.en by default, so migrate that default to tiny.en.
                 if config.whisper_model == "small.en":
@@ -55,7 +57,15 @@ class ConfigStore:
                 config.speaker_id = ""
                 config.microphone_id = ""
                 config.overlay_opacity = 1.0
-                config.config_version = CURRENT_CONFIG_VERSION
+            if source_version < 3:
+                # v1.0.6 changes microphone IDs from WASAPI endpoint strings to
+                # PortAudio indices. Re-select the live Windows default and use
+                # the reliable CPU path until CUDA is explicitly chosen again.
+                config.microphone_id = ""
+                config.whisper_device = "cpu"
+                config.whisper_compute_type = "int8"
+                config.auto_check_updates = True
+            config.config_version = CURRENT_CONFIG_VERSION
             config.overlay_opacity = min(1.0, max(0.45, config.overlay_opacity))
             return config
         except (OSError, ValueError, TypeError, json.JSONDecodeError):

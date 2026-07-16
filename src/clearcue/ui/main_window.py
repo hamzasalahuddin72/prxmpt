@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtCore import QObject, QTimer, Qt, QUrl, Signal
+from PySide6.QtGui import QCloseEvent, QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QFrame,
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from clearcue.config import AppConfig, ConfigStore
 from clearcue.services.session_controller import SessionController
+from clearcue.services.updater import ReleaseInfo, UpdateService
 from clearcue.storage.database import Database
 from clearcue.ui.context_dialog import ContextDialog
 from clearcue.ui.history_dialog import HistoryDialog
@@ -57,17 +59,26 @@ class MainWindow(QMainWindow):
         self.config_store = config_store
         self.config = config
         self.controller = SessionController(database, config_store, config, self)
+        self.updater = UpdateService(self)
+        self._available_release: ReleaseInfo | None = None
+        self._manual_update_check = False
         self.overlay = OverlayWindow(config.overlay_opacity)
         self.overlay.resize(config.overlay_width, config.overlay_height)
         self.hotkey_bridge = HotkeyBridge(self)
 
-        self.setWindowTitle("ClearCue 1.0.5 — Performance Build")
+        self.setWindowTitle("ClearCue 1.0.6 — Reliability Build")
         self.resize(1100, 720)
         self.setMinimumSize(840, 600)
         self._build_ui()
         self._connect_signals()
         self._load_profiles()
         self.statusBar().showMessage("Ready")
+        self.update_timer = QTimer(self)
+        self.update_timer.setInterval(6 * 60 * 60 * 1000)
+        self.update_timer.timeout.connect(self._automatic_update_check)
+        self.update_timer.start()
+        if self.config.auto_check_updates:
+            QTimer.singleShot(4000, self._automatic_update_check)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -77,10 +88,10 @@ class MainWindow(QMainWindow):
         root.setSpacing(8)
 
         header = QHBoxLayout()
-        title = QLabel("CLEARCUE 1.0.5")
+        title = QLabel("CLEARCUE 1.0.6")
         title.setObjectName("Title")
         header.addWidget(title)
-        mode = QLabel("PERFORMANCE MODE")
+        mode = QLabel("RELIABILITY MODE")
         mode.setObjectName("ModeBadge")
         header.addWidget(mode)
         header.addStretch()
@@ -94,11 +105,46 @@ class MainWindow(QMainWindow):
         history_button.clicked.connect(self.open_history)
         settings_button = QPushButton("Settings")
         settings_button.clicked.connect(self.open_settings)
+        updates_button = QPushButton("Updates")
+        updates_button.clicked.connect(self.check_updates)
         overlay_button = QPushButton("Overlay")
         overlay_button.clicked.connect(self.toggle_overlay)
-        for button in (context_button, history_button, settings_button, overlay_button):
+        for button in (
+            context_button,
+            history_button,
+            settings_button,
+            updates_button,
+            overlay_button,
+        ):
             header.addWidget(button)
         root.addLayout(header)
+
+        self.update_banner = QFrame()
+        self.update_banner.setObjectName("UpdateBanner")
+        update_layout = QHBoxLayout(self.update_banner)
+        update_layout.setContentsMargins(8, 6, 8, 6)
+        self.update_label = QLabel("")
+        self.update_label.setObjectName("UpdateText")
+        self.update_label.setWordWrap(True)
+        update_layout.addWidget(self.update_label, 1)
+        self.update_progress = QProgressBar()
+        self.update_progress.setRange(0, 100)
+        self.update_progress.setTextVisible(True)
+        self.update_progress.setFixedWidth(150)
+        self.update_progress.hide()
+        update_layout.addWidget(self.update_progress)
+        self.update_notes_button = QPushButton("Release notes")
+        self.update_notes_button.clicked.connect(self._open_release_notes)
+        update_layout.addWidget(self.update_notes_button)
+        self.update_install_button = QPushButton("Download and install")
+        self.update_install_button.setObjectName("Primary")
+        self.update_install_button.clicked.connect(self._download_update)
+        update_layout.addWidget(self.update_install_button)
+        update_later_button = QPushButton("Later")
+        update_later_button.clicked.connect(self.update_banner.hide)
+        update_layout.addWidget(update_later_button)
+        self.update_banner.hide()
+        root.addWidget(self.update_banner)
 
         session_card, session_layout = _card()
         section = QLabel("LIVE SESSION")
@@ -225,6 +271,12 @@ class MainWindow(QMainWindow):
         self.controller.source_state_changed.connect(self._show_source_state)
         self.controller.error_raised.connect(self._show_error)
         self.controller.session_state_changed.connect(self._session_state)
+        self.updater.update_available.connect(self._show_update_available)
+        self.updater.no_update.connect(self._show_no_update)
+        self.updater.check_failed.connect(self._show_update_check_failed)
+        self.updater.download_progress.connect(self._show_update_progress)
+        self.updater.download_failed.connect(self._show_update_download_failed)
+        self.updater.installer_ready.connect(self._install_downloaded_update)
         self.overlay.regenerate_requested.connect(self.generate_answer)
         self.overlay.main_window_requested.connect(self._bring_to_front)
         self.hotkey_bridge.toggle_session.connect(self.toggle_session)
@@ -274,6 +326,69 @@ class MainWindow(QMainWindow):
             if index >= 0:
                 self.style_combo.setCurrentIndex(index)
             self.statusBar().showMessage("Settings saved", 4000)
+
+    def check_updates(self) -> None:
+        self._manual_update_check = True
+        self.statusBar().showMessage("Checking for ClearCue updates…")
+        self.updater.check_for_updates()
+
+    def _automatic_update_check(self) -> None:
+        if self.config.auto_check_updates:
+            self.updater.check_for_updates()
+
+    def _show_update_available(self, release: ReleaseInfo) -> None:
+        self._available_release = release
+        self._manual_update_check = False
+        self.update_label.setText(
+            f"ClearCue {release.version} is available. The verified update can be installed here."
+        )
+        self.update_progress.hide()
+        self.update_install_button.setEnabled(True)
+        self.update_install_button.setText("Download and install")
+        self.update_banner.show()
+        self.statusBar().showMessage(f"ClearCue {release.version} update available", 8000)
+
+    def _show_no_update(self, current_version: str) -> None:
+        if self._manual_update_check:
+            self.statusBar().showMessage(
+                f"ClearCue {current_version} is the latest published version.",
+                6000,
+            )
+        self._manual_update_check = False
+
+    def _show_update_check_failed(self, message: str) -> None:
+        if self._manual_update_check:
+            self.statusBar().showMessage(message, 8000)
+        self._manual_update_check = False
+
+    def _open_release_notes(self) -> None:
+        if self._available_release and self._available_release.page_url:
+            QDesktopServices.openUrl(QUrl(self._available_release.page_url))
+
+    def _download_update(self) -> None:
+        if not self._available_release:
+            return
+        self.update_install_button.setEnabled(False)
+        self.update_install_button.setText("Downloading…")
+        self.update_progress.setValue(0)
+        self.update_progress.show()
+        self.updater.download(self._available_release)
+
+    def _show_update_progress(self, percent: int) -> None:
+        self.update_progress.setValue(max(0, min(100, percent)))
+
+    def _show_update_download_failed(self, message: str) -> None:
+        self.update_install_button.setEnabled(True)
+        self.update_install_button.setText("Try again")
+        self._show_error(f"Update failed safely: {message}")
+
+    def _install_downloaded_update(self, installer_path: str) -> None:
+        self.update_install_button.setText("Starting installer…")
+        self.statusBar().showMessage("Installing the verified ClearCue update…")
+        if self.controller.running:
+            self.controller.stop()
+        if self.updater.launch_installer(installer_path):
+            QTimer.singleShot(300, QApplication.instance().quit)
 
     def toggle_session(self) -> None:
         if self.controller.running:
@@ -370,6 +485,7 @@ class MainWindow(QMainWindow):
         self.activateWindow()
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self.updater.shutdown()
         self.overlay.close()
         self.controller.shutdown()
         super().closeEvent(event)

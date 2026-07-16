@@ -69,9 +69,11 @@ class TranscriptionWorker:
         on_status: Callable[[str], None] | None = None,
         on_error: Callable[[str], None] | None = None,
         engine: FasterWhisperEngine | None = None,
+        engine_factory: Callable[[str, str, str], FasterWhisperEngine] | None = None,
         queue_size: int = 4,
     ) -> None:
-        self.engine = engine or FasterWhisperEngine(model_name, device, compute_type)
+        self._engine_factory = engine_factory or FasterWhisperEngine
+        self.engine = engine or self._engine_factory(model_name, device, compute_type)
         self.on_transcript = on_transcript
         self.on_status = on_status or (lambda message: None)
         self.on_error = on_error or (lambda message: None)
@@ -134,11 +136,9 @@ class TranscriptionWorker:
             self.engine.load()
         except Exception as exc:
             if self.engine.device != "cpu":
-                self.on_status("GPU speech setup failed; falling back to CPU/int8")
                 LOGGER.warning("GPU speech model failed; falling back to CPU", exc_info=True)
-                self.engine = FasterWhisperEngine(self.engine.model_name, "cpu", "int8")
                 try:
-                    self.engine.load()
+                    self._fallback_to_cpu()
                 except Exception as fallback_exc:
                     self.on_error(f"Speech model could not load: {fallback_exc}")
                     return
@@ -159,7 +159,21 @@ class TranscriptionWorker:
             speaker, audio = item
             try:
                 started = time.perf_counter()
-                text = self.engine.transcribe(audio)
+                try:
+                    text = self.engine.transcribe(audio)
+                except Exception:
+                    # CTranslate2 can construct a CUDA model successfully and
+                    # only discover missing cuBLAS/cuDNN DLLs on its first
+                    # inference. Recover at the point of failure and retry this
+                    # segment once instead of losing live transcription.
+                    if self.engine.device == "cpu":
+                        raise
+                    LOGGER.warning(
+                        "GPU speech inference failed; retrying on CPU/int8",
+                        exc_info=True,
+                    )
+                    self._fallback_to_cpu()
+                    text = self.engine.transcribe(audio)
                 elapsed = time.perf_counter() - started
                 LOGGER.info(
                     "Transcribed %.2fs of %s audio in %.2fs",
@@ -176,3 +190,10 @@ class TranscriptionWorker:
                 LOGGER.exception("Transcription failed")
                 self.on_error(f"Transcription failed: {exc}")
         self.on_status("Transcription stopped")
+
+    def _fallback_to_cpu(self) -> None:
+        self.on_status("GPU unavailable — switching speech recognition to CPU/int8")
+        replacement = self._engine_factory(self.engine.model_name, "cpu", "int8")
+        replacement.load()
+        self.engine = replacement
+        self.on_status("Listening — CPU/int8 speech model ready")

@@ -5,6 +5,7 @@ Their licences remain with their respective authors. The primary packages are:
 
 - Qt for Python / PySide6 — LGPLv3/GPLv3/commercial licensing
 - SoundCard — BSD 3-Clause
+- python-sounddevice / PortAudio bindings — MIT
 - faster-whisper — MIT
 - CTranslate2 — MIT
 - WebRTC VAD wheels — MIT/BSD-style upstream components
@@ -17,4 +18,3 @@ Their licences remain with their respective authors. The primary packages are:
 
 Review the installed package metadata before distributing a commercial build.
 VoiceMeeter is not bundled and remains subject to VB-Audio's own licence.
-

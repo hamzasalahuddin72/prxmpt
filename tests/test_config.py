@@ -27,8 +27,25 @@ def test_legacy_config_migrates_to_performance_defaults(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     config = ConfigStore(path).load()
-    assert config.config_version == 2
+    assert config.config_version == 3
     assert config.whisper_model == "tiny.en"
     assert config.overlay_opacity == 1.0
     assert config.speaker_id == ""
     assert config.microphone_id == ""
+
+
+def test_v2_config_migrates_microphone_and_gpu_without_resetting_loopback(tmp_path: Path) -> None:
+    path = tmp_path / "settings.json"
+    path.write_text(
+        '{"config_version": 2, "speaker_id": "working-loopback", '
+        '"microphone_id": "old-wasapi-id", "whisper_device": "cuda", '
+        '"whisper_compute_type": "float16"}',
+        encoding="utf-8",
+    )
+    config = ConfigStore(path).load()
+    assert config.config_version == 3
+    assert config.speaker_id == "working-loopback"
+    assert config.microphone_id == ""
+    assert config.whisper_device == "cpu"
+    assert config.whisper_compute_type == "int8"
+    assert config.auto_check_updates is True

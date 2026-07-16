@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,5 +24,17 @@ jobs:
         run: .\scripts\build_windows.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: ClearCue-Windows-Update-1.0.5
-          path: installer/output/ClearCueUpdate_1.0.5.exe
+          name: ClearCue-Windows-Update-1.0.6
+          path: installer/output/ClearCueUpdate_1.0.6.exe
+          if-no-files-found: error
+      - name: Publish tagged GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release create "${{ github.ref_name }}"
+          "installer/output/ClearCueUpdate_1.0.6.exe"
+          --verify-tag
+          --generate-notes
+          --title "ClearCue ${{ github.ref_name }}"

@@ -11,6 +11,15 @@ QWidget {
 QFrame#Card {
     border: 2px solid #ffffff;
 }
+QFrame#UpdateBanner {
+    background: #002b12;
+    border: 2px solid #00ff66;
+}
+QLabel#UpdateText {
+    background: #002b12;
+    color: #ffffff;
+    font-weight: 700;
+}
 QLabel#Title {
     font-size: 18pt;
     font-weight: 800;

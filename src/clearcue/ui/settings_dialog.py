@@ -44,8 +44,8 @@ class SettingsDialog(QDialog):
         audio_form.addRow("Your microphone", self.microphone_combo)
         audio_form.addRow("", refresh)
         note = QLabel(
-            "Direct Windows WASAPI loopback is used. If VoiceMeeter is installed, "
-            "its virtual devices appear in these lists automatically."
+            "Windows loopback captures meeting audio. The microphone uses the more "
+            "driver-compatible PortAudio backend. VoiceMeeter devices appear here automatically."
         )
         note.setWordWrap(True)
         note.setObjectName("Muted")
@@ -65,6 +65,8 @@ class SettingsDialog(QDialog):
         self.compute_type = QComboBox()
         self.compute_type.addItems(["int8", "float16", "int8_float16", "float32"])
         self.compute_type.setCurrentText(config.whisper_compute_type)
+        self.whisper_device.currentIndexChanged.connect(self._sync_compute_type)
+        self._sync_compute_type()
         speech_form.addRow("Local Whisper model", self.whisper_model)
         speech_form.addRow("Processing device", self.whisper_device)
         speech_form.addRow("Compute type", self.compute_type)
@@ -114,6 +116,21 @@ class SettingsDialog(QDialog):
         ai_form.addRow("", self.auto_generate)
         tabs.addTab(ai_tab, "Answers")
 
+        updates_tab = QWidget()
+        updates_form = QFormLayout(updates_tab)
+        self.auto_check_updates = QCheckBox("Notify me when a stable ClearCue update is available")
+        self.auto_check_updates.setChecked(config.auto_check_updates)
+        updates_form.addRow("Automatic checks", self.auto_check_updates)
+        updates_note = QLabel(
+            "ClearCue checks the public GitHub Release feed without an account or token. "
+            "Use the Updates button in the main window to check immediately. Installation "
+            "always requires your confirmation."
+        )
+        updates_note.setWordWrap(True)
+        updates_note.setObjectName("Muted")
+        updates_form.addRow(updates_note)
+        tabs.addTab(updates_tab, "Updates")
+
         privacy_tab = QWidget()
         privacy_form = QFormLayout(privacy_tab)
         self.save_transcripts = QCheckBox("Save session transcripts locally")
@@ -154,6 +171,13 @@ class SettingsDialog(QDialog):
         else:
             combo.setCurrentIndex(0)
 
+    def _sync_compute_type(self) -> None:
+        if self.whisper_device.currentData() == "cpu" and self.compute_type.currentText() in {
+            "float16",
+            "int8_float16",
+        }:
+            self.compute_type.setCurrentText("int8")
+
     def _load_devices(self) -> None:
         try:
             self._populate_device_combo(
@@ -175,13 +199,17 @@ class SettingsDialog(QDialog):
         except SecretStoreError as exc:
             QMessageBox.warning(self, "Credential storage", str(exc))
             return
+        whisper_device = str(self.whisper_device.currentData() or "cpu")
+        compute_type = self.compute_type.currentText()
+        if whisper_device == "cpu" and compute_type not in {"int8", "float32"}:
+            compute_type = "int8"
         self.result_config = replace(
             self.original_config,
             speaker_id=str(self.speaker_combo.currentData() or ""),
             microphone_id=str(self.microphone_combo.currentData() or ""),
             whisper_model=self.whisper_model.currentText().strip() or "tiny.en",
-            whisper_device=str(self.whisper_device.currentData()),
-            whisper_compute_type=self.compute_type.currentText(),
+            whisper_device=whisper_device,
+            whisper_compute_type=compute_type,
             answer_provider=str(self.provider.currentData()),
             openai_model=self.openai_model.currentText().strip() or "gpt-5.6-luna",
             ollama_url=self.ollama_url.text().strip() or "http://127.0.0.1:11434",
@@ -190,5 +218,6 @@ class SettingsDialog(QDialog):
             auto_generate=self.auto_generate.isChecked(),
             overlay_opacity=1.0,
             save_transcripts=self.save_transcripts.isChecked(),
+            auto_check_updates=self.auto_check_updates.isChecked(),
         )
         self.accept()

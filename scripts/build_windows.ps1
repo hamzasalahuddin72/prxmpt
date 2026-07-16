@@ -108,7 +108,7 @@ function Find-InnoCompiler {
     return $null
 }
 
-Write-Host "ClearCue 1.0.5 Windows update builder" -ForegroundColor Cyan
+Write-Host "ClearCue 1.0.6 Windows update builder" -ForegroundColor Cyan
 Write-Host "Project: $ProjectRoot"
 Write-Host ""
 
@@ -164,12 +164,12 @@ if (-not $InnoCompiler) {
     throw "Inno Setup was installed but ISCC.exe could not be located. Restart Windows, then run BUILD_INSTALLER.bat again."
 }
 
-Write-Host "Creating ClearCueUpdate_1.0.5.exe..."
+Write-Host "Creating ClearCueUpdate_1.0.6.exe..."
 Invoke-Checked -Command $InnoCompiler -Arguments @("installer\ClearCue.iss")
 
-$Installer = Join-Path $ProjectRoot "installer\output\ClearCueUpdate_1.0.5.exe"
+$Installer = Join-Path $ProjectRoot "installer\output\ClearCueUpdate_1.0.6.exe"
 if (-not (Test-Path $Installer)) {
-    throw "The installer compiler finished but ClearCueUpdate_1.0.5.exe was not created."
+    throw "The installer compiler finished but ClearCueUpdate_1.0.6.exe was not created."
 }
 
 Write-Host ""
@@ -177,4 +177,6 @@ Write-Host "SUCCESS" -ForegroundColor Green
 Write-Host "Installer created at:" -ForegroundColor Green
 Write-Host $Installer -ForegroundColor White
 Write-Host ""
-Start-Process explorer.exe -ArgumentList "/select,`"$Installer`""
+if ($env:GITHUB_ACTIONS -ne "true") {
+    Start-Process explorer.exe -ArgumentList "/select,`"$Installer`""
+}

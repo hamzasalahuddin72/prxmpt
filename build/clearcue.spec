@@ -12,11 +12,15 @@ hiddenimports += collect_submodules("keyring.backends")
 hiddenimports += collect_submodules("pynput")
 hiddenimports += [
     "soundcard.mediafoundation",
+    "sounddevice",
+    "_sounddevice_data",
     "faster_whisper",
 ]
 
 datas = collect_data_files("faster_whisper")
+datas += collect_data_files("_sounddevice_data")
 binaries = collect_dynamic_libs("ctranslate2")
+binaries += collect_dynamic_libs("_sounddevice_data")
 
 a = Analysis(
     [str(project_root / "src" / "clearcue" / "main.py")],

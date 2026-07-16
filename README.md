@@ -19,6 +19,7 @@ contexts where assistance and transcription are allowed.
 ## Main capabilities
 
 - WASAPI loopback meeting-audio capture through SoundCard
+- PortAudio microphone capture through sounddevice for broader driver compatibility
 - Separate microphone channel and speaker labels
 - In-memory resampling and utterance segmentation
 - Local faster-whisper transcription
@@ -33,13 +34,14 @@ contexts where assistance and transcription are allowed.
 - API-key storage through Windows Credential Manager
 - PyInstaller and Inno Setup build pipeline
 - Windows GitHub Actions build workflow
+- Verified in-app update notifications backed by permanent GitHub Releases
 
 ## Architecture
 
 ```text
-WASAPI loopback + microphone
-            |
-     capture and downmix
+SoundCard loopback + PortAudio microphone
+                   |
+            capture and downmix
             |
      16 kHz resampling
             |
@@ -97,7 +99,12 @@ The application can also be launched using `INSTALL_AND_RUN.bat`.
 3. Runs the unit tests.
 4. Builds an onedir PyInstaller application.
 5. Compiles `installer/ClearCue.iss` with Inno Setup.
-6. Produces `installer/output/ClearCueUpdate_1.0.5.exe`.
+6. Produces `installer/output/ClearCueUpdate_1.0.6.exe`.
+
+Tagged builds such as `v1.0.6` are also published as permanent GitHub Releases.
+Installed clients query the public latest-release endpoint, compare semantic
+versions, download in the background and verify GitHub's SHA-256 asset digest
+before starting a silent in-place update.
 
 An onedir application is intentionally used behind the single installer. Large
 Qt and AI dependencies start more reliably this way than when every dependency
@@ -130,6 +137,9 @@ The test suite covers:
 - grounded local output
 - SQLite profile, context and transcript lifecycle
 - audio resampling and segmentation helpers
+- CUDA-to-CPU transcription recovery
+- release parsing, version comparison and update integrity helpers
 
-Audio-device enumeration, live WASAPI capture, PyInstaller output and the Inno
-Setup installer must additionally be tested on a clean Windows 10/11 machine.
+Audio-device enumeration, live WASAPI/PortAudio capture, PyInstaller output,
+in-app update handoff and the Inno Setup installer must additionally be tested
+on a clean Windows 10/11 machine.
