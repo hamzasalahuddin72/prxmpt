@@ -2,7 +2,7 @@ from clearcue.paths import migrate_legacy_user_data
 
 
 def test_legacy_clearcue_data_is_copied_without_deleting_source(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    monkeypatch.setattr("clearcue.paths._data_root", lambda: tmp_path)
     legacy = tmp_path / "ClearCue"
     legacy.mkdir()
     (legacy / "settings.json").write_text('{"config_version": 4}', encoding="utf-8")
