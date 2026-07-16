@@ -2,25 +2,21 @@ from __future__ import annotations
 
 from functools import partial
 
-from PySide6.QtCore import QDir, QFile, QEvent, QObject, QPoint, QSize, QTimer, Qt, QUrl, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QSize, QTimer, Qt, QUrl, Signal
 from PySide6.QtGui import (
     QAction,
-    QColor,
     QCloseEvent,
     QDesktopServices,
     QIcon,
     QMouseEvent,
-    QPaintEvent,
-    QPainter,
+    QMoveEvent,
     QPixmap,
+    QRegion,
 )
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QFrame,
     QGraphicsOpacityEffect,
-    QGraphicsScene,
-    QGraphicsView,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -28,12 +24,13 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtUiTools import QUiLoader
 
+from clearcue import __version__
 from clearcue.config import AppConfig, ConfigStore
 from clearcue.resources import resource_path
 from clearcue.services.session_controller import SessionController
@@ -41,8 +38,29 @@ from clearcue.services.updater import ReleaseInfo, UpdateService
 from clearcue.storage.database import Database
 from clearcue.ui.context_dialog import ContextDialog
 from clearcue.ui.history_dialog import HistoryDialog
+from clearcue.ui.popup_cluster import (
+    PopupPanel,
+    ToggleSwitch,
+    activity_buttons_mask,
+    audio_handler_mask,
+    history_popup_mask,
+    install_scaled_form,
+    plot_popup_mask,
+    top_bar_mask,
+)
 from clearcue.ui.popup_helpers import (
-    popup_size_for_screen,
+    ACTIVITY_BUTTONS_SIZE,
+    AUDIO_HANDLER_SIZE,
+    HISTORY_POPUP_SIZE,
+    PLOT_POPUP_SIZE,
+    TOP_BAR_SIZE,
+    PopupState,
+    controls_toggle_target,
+    history_toggle_target,
+    plot_toggle_target,
+    popup_cluster_positions,
+    popup_cluster_size,
+    popup_scale_for_screen,
     session_display_time,
     session_display_title,
 )
@@ -50,53 +68,10 @@ from clearcue.ui.session_content_dialog import SessionContentDialog
 from clearcue.ui.settings_dialog import SettingsDialog
 
 
-DESIGN_WIDTH = 551
-DESIGN_HEIGHT = 827
-COLLAPSED_HEIGHT = 80
-
-
 class HotkeyBridge(QObject):
     toggle_session = Signal()
     generate = Signal()
     toggle_overlay = Signal()
-
-
-class ToggleSwitch(QCheckBox):
-    """Toggle using the exact approved on-state asset."""
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedSize(45, 45)
-        self._on_pixmap = QPixmap(str(resource_path("toggle-on.png")))
-
-    def paintEvent(self, event: QPaintEvent) -> None:  # noqa: ARG002
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        if self.isChecked() and not self._on_pixmap.isNull():
-            painter.drawPixmap(self.rect(), self._on_pixmap)
-            return
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#55575c"))
-        painter.drawRoundedRect(0, 13, 45, 19, 10, 10)
-        painter.setBrush(QColor("#d8d9dc"))
-        painter.drawEllipse(1, 11, 23, 23)
-
-
-class PrxmptUiLoader(QUiLoader):
-    """Load the Designer form while preserving the custom toggle widget."""
-
-    def createWidget(
-        self,
-        class_name: str,
-        parent: QWidget | None = None,
-        name: str = "",
-    ) -> QWidget:
-        if class_name == "ToggleSwitch":
-            widget = ToggleSwitch(parent)
-            widget.setObjectName(name)
-            return widget
-        return super().createWidget(class_name, parent, name)
 
 
 def _set_dynamic_property(widget: QWidget, name: str, value: object) -> None:
@@ -109,6 +84,8 @@ def _set_dynamic_property(widget: QWidget, name: str, value: object) -> None:
 
 
 class MainWindow(QMainWindow):
+    """Top-bar owner and controller for the five independent popup surfaces."""
+
     def __init__(
         self,
         database: Database,
@@ -127,26 +104,22 @@ class MainWindow(QMainWindow):
         self._manual_update_check = False
         self._drag_origin: QPoint | None = None
         self._drag_locked = bool(config.popup_drag_locked)
-        self._collapsed = False
-        self._expanded_size = (DESIGN_WIDTH, DESIGN_HEIGHT)
-        self._ui_scale = 1.0
+        self._popup_state = PopupState.TOP_ONLY
         self._initial_geometry_applied = False
         self._allow_quit = False
         self._cleaned_up = False
         self._tray_notice_shown = False
+        self._syncing_cluster_position = False
 
-        self.setWindowTitle("prxmpt 1.0.9")
+        self.setWindowTitle(f"prxmpt {__version__}")
         self.setWindowFlags(
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        target_width, target_height = self._target_popup_size()
-        self._ui_scale = target_width / DESIGN_WIDTH
-        self._expanded_size = (target_width, target_height)
-        self.setFixedSize(target_width, target_height)
         self.setWindowIcon(self._make_app_icon())
+        self._ui_scale = self._target_scale()
 
         self._build_ui()
         self._connect_signals()
@@ -155,6 +128,9 @@ class MainWindow(QMainWindow):
         self._refresh_audio_buttons()
         self._refresh_history()
         self._update_drag_button()
+        self._apply_cluster_opacity()
+        self._apply_window_shape()
+        self._apply_popup_state(PopupState.TOP_ONLY)
 
         self.update_timer = QTimer(self)
         self.update_timer.setInterval(6 * 60 * 60 * 1000)
@@ -167,43 +143,18 @@ class MainWindow(QMainWindow):
     def _make_app_icon() -> QIcon:
         return QIcon(str(resource_path("prxmpt.ico")))
 
-    def _target_popup_size(self) -> tuple[int, int]:
+    def _target_scale(self) -> float:
         screen = self.screen() or QApplication.primaryScreen()
         if not screen:
-            return DESIGN_WIDTH, DESIGN_HEIGHT
+            return 1.0
         available = screen.availableGeometry()
-        return popup_size_for_screen(
-            available.width(),
-            available.height(),
-            DESIGN_WIDTH,
-            DESIGN_HEIGHT,
-        )
-
-    @staticmethod
-    def _icon_button(
-        text: str = "",
-        object_name: str = "HeaderIcon",
-        asset: str | None = None,
-        icon_size: tuple[int, int] | None = None,
-    ) -> QPushButton:
-        button = QPushButton(text)
-        button.setObjectName(object_name)
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        if asset:
-            button.setText("")
-            button.setIcon(QIcon(str(resource_path(asset))))
-            if icon_size:
-                button.setIconSize(QSize(*icon_size))
-        return button
+        return popup_scale_for_screen(available.width(), available.height())
 
     @staticmethod
     def _required_child(form: QWidget, widget_type: type, object_name: str):
         widget = form.findChild(widget_type, object_name)
         if widget is None:
-            raise RuntimeError(
-                f"The editable prxmpt-main.ui form is missing {object_name}."
-            )
+            raise RuntimeError(f"The popup Designer forms are missing {object_name}.")
         return widget
 
     @staticmethod
@@ -218,77 +169,110 @@ class MainWindow(QMainWindow):
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-    def _build_ui(self) -> None:
-        ui_path = resource_path("prxmpt-main.ui")
-        ui_file = QFile(str(ui_path))
-        if not ui_file.open(QFile.OpenModeFlag.ReadOnly):
-            raise RuntimeError(f"Unable to open the editable UI form: {ui_path}")
-        loader = PrxmptUiLoader()
-        loader.setWorkingDirectory(QDir(str(ui_path.parent)))
-        try:
-            form = loader.load(ui_file)
-        finally:
-            ui_file.close()
-        if not isinstance(form, QWidget):
-            raise RuntimeError(
-                f"Unable to load the editable UI form: {loader.errorString()}"
-            )
-        self._designer_form = form
+    @staticmethod
+    def _icon_button(
+        object_name: str,
+        asset: str,
+        icon_size: tuple[int, int],
+    ) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName(object_name)
+        MainWindow._configure_asset_button(button, asset, icon_size)
+        return button
 
-        if self._ui_scale < 0.999:
-            scene = QGraphicsScene(self)
-            scene.setSceneRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT)
-            scene.addWidget(form)
-            view = QGraphicsView(scene)
-            view.setObjectName("TransparentPanel")
-            view.setStyleSheet("background: transparent; border: 0;")
-            view.viewport().setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-            view.setFrameShape(QFrame.Shape.NoFrame)
-            view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            view.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-            view.setRenderHints(
-                QPainter.RenderHint.Antialiasing
-                | QPainter.RenderHint.TextAntialiasing
-                | QPainter.RenderHint.SmoothPixmapTransform
-            )
-            view.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.MinimalViewportUpdate)
-            view.scale(self._ui_scale, self._ui_scale)
-            self._graphics_view: QGraphicsView | None = view
-            self._graphics_scene: QGraphicsScene | None = scene
-            self.setCentralWidget(view)
-        else:
-            self._graphics_view = None
-            self._graphics_scene = None
-            self.setCentralWidget(form)
+    def _build_ui(self) -> None:
+        self._top_form, self._top_scene, self._top_view = install_scaled_form(
+            self,
+            "prxmpt-top-bar.ui",
+            TOP_BAR_SIZE,
+            self._ui_scale,
+        )
+        self.audio_popup = PopupPanel(
+            self,
+            "prxmpt-audio-handler.ui",
+            AUDIO_HANDLER_SIZE,
+            self._ui_scale,
+            audio_handler_mask,
+        )
+        self.activity_popup = PopupPanel(
+            self,
+            "prxmpt-activity-buttons.ui",
+            ACTIVITY_BUTTONS_SIZE,
+            self._ui_scale,
+            activity_buttons_mask,
+        )
+        self.plot_popup = PopupPanel(
+            self,
+            "prxmpt-plot-popup.ui",
+            PLOT_POPUP_SIZE,
+            self._ui_scale,
+            plot_popup_mask,
+        )
+        self.history_popup = PopupPanel(
+            self,
+            "prxmpt-history-popup.ui",
+            HISTORY_POPUP_SIZE,
+            self._ui_scale,
+            history_popup_mask,
+        )
+        for popup in self._subordinate_popups:
+            popup.setWindowIcon(self.windowIcon())
+            popup.hide()
 
         find = self._required_child
-        self.popup_frame = find(form, QFrame, "PopupRoot")
-        self.header = find(form, QFrame, "PopupHeader")
-        self.body = find(form, QWidget, "TransparentPanel")
-        self.settings_button = find(form, QPushButton, "SettingsIcon")
-        self.brand = find(form, QLabel, "PopupBrand")
-        self.drag_button = find(form, QPushButton, "DragIcon")
-        self.collapse_button = find(form, QPushButton, "PrivacyIcon")
-        self.close_button = find(form, QPushButton, "PopupClose")
-        self.microphone_button = find(form, QPushButton, "MicrophoneButton")
-        self.speaker_button = find(form, QPushButton, "SpeakerButton")
-        self.live_button = find(form, QPushButton, "LiveButton")
-        self.question_input = find(form, QPlainTextEdit, "QuestionInput")
-        self.ask_button = find(form, QPushButton, "AnswerButton")
-        self.transcription_indicator = find(form, QLabel, "TranscriptionIndicator")
-        self.clear_button = find(form, QPushButton, "ClearButton")
-        self.error_banner = find(form, QLabel, "PopupError")
-        self.answer_view = find(form, QPlainTextEdit, "AnswerView")
-        self.model_badge = find(form, QPushButton, "ModelBadge")
-        self.auto_answer_switch = find(form, ToggleSwitch, "AutoAnswerSwitch")
-        self.stealth_switch = find(form, ToggleSwitch, "StealthSwitch")
-        auto_label = find(form, QLabel, "AutoAnswerLabel")
-        stealth_label = find(form, QLabel, "StealthLabel")
-        self.history_card = find(form, QFrame, "HistoryCard")
-        history_layout = self.history_card.layout()
+        self.header = find(self._top_form, QFrame, "PopupHeader")
+        self.settings_button = find(self._top_form, QPushButton, "SettingsIcon")
+        self.brand = find(self._top_form, QLabel, "PopupBrand")
+        self.drag_button = find(self._top_form, QPushButton, "DragIcon")
+        self.collapse_button = find(self._top_form, QPushButton, "PrivacyIcon")
+        self.close_button = find(self._top_form, QPushButton, "PopupClose")
+
+        audio_form = self.audio_popup.form
+        self.microphone_button = find(audio_form, QPushButton, "MicrophoneButton")
+        self.speaker_button = find(audio_form, QPushButton, "SpeakerButton")
+        self.live_button = find(audio_form, QPushButton, "LiveButton")
+        self.question_input = find(audio_form, QPlainTextEdit, "QuestionInput")
+        self.ask_button = find(audio_form, QPushButton, "AnswerButton")
+        self.transcription_indicator = find(
+            audio_form,
+            QLabel,
+            "TranscriptionIndicator",
+        )
+        self.clear_button = find(audio_form, QPushButton, "ClearButton")
+        self.error_banner = find(audio_form, QLabel, "PopupError")
+
+        activity_form = self.activity_popup.form
+        self.plot_toggle_button = find(
+            activity_form,
+            QPushButton,
+            "PlotToggleButton",
+        )
+        self.history_toggle_button = find(
+            activity_form,
+            QPushButton,
+            "HistoryToggleButton",
+        )
+
+        plot_form = self.plot_popup.form
+        self.answer_view = find(plot_form, QPlainTextEdit, "AnswerView")
+        self.error_mirror = find(plot_form, QLabel, "PopupErrorMirror")
+        self.model_badge = find(plot_form, QPushButton, "ModelBadge")
+        self.auto_answer_switch = find(
+            plot_form,
+            ToggleSwitch,
+            "AutoAnswerSwitch",
+        )
+        self.stealth_switch = find(plot_form, ToggleSwitch, "StealthSwitch")
+        auto_label = find(plot_form, QLabel, "AutoAnswerLabel")
+        stealth_label = find(plot_form, QLabel, "StealthLabel")
+
+        history_form = self.history_popup.form
+        self.history_card = find(history_form, QFrame, "HistoryCard")
+        self.history_scroll = find(history_form, QScrollArea, "HistoryScroll")
+        history_contents = find(history_form, QWidget, "HistoryContents")
+        history_layout = history_contents.layout()
         if not isinstance(history_layout, QVBoxLayout):
-            raise RuntimeError("The editable UI form is missing HistoryLayout.")
+            raise RuntimeError("The history popup is missing HistoryLayout.")
         self.history_layout = history_layout
 
         self.microphone_button.setObjectName("AudioSourceButton")
@@ -297,28 +281,24 @@ class MainWindow(QMainWindow):
         stealth_label.setObjectName("ToggleLabel")
 
         for button, asset, size in (
-            (self.settings_button, "settings.png", (35, 35)),
-            (self.drag_button, "drag-lock.png", (26, 26)),
-            (self.collapse_button, "collapse.png", (31, 31)),
-            (self.close_button, "exit.png", (26, 26)),
-            (self.microphone_button, "microphone.png", (53, 53)),
-            (self.speaker_button, "speaker.png", (68, 68)),
+            (self.settings_button, "settings.png", (24, 24)),
+            (self.drag_button, "drag-lock.png", (22, 22)),
+            (self.collapse_button, "collapse.png", (22, 22)),
+            (self.close_button, "exit.png", (17, 17)),
+            (self.microphone_button, "microphone.png", (35, 35)),
+            (self.speaker_button, "speaker.png", (45, 45)),
         ):
             self._configure_asset_button(button, asset, size)
         self.brand.setPixmap(QPixmap(str(resource_path("prxmpt-logo.png"))))
         self.brand.setScaledContents(True)
         self.brand.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        indicator = QPixmap(str(resource_path("transcribing.png")))
         self.transcription_indicator.setPixmap(
-            indicator.scaled(
-                59,
-                59,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
+            QPixmap(str(resource_path("transcribing.png")))
         )
+        self.transcription_indicator.setScaledContents(True)
         self.transcription_indicator.hide()
         self.error_banner.hide()
+        self.error_mirror.hide()
         self.question_input.setMaximumBlockCount(8)
         self.session_button = self.live_button
 
@@ -326,8 +306,7 @@ class MainWindow(QMainWindow):
         self.settings_button.setToolTip("Settings, profile, context and updates")
         self.settings_button.clicked.connect(self._show_control_menu)
         self.drag_button.clicked.connect(self._toggle_drag_lock)
-        self.collapse_button.setToolTip("Collapse prxmpt to the title bar")
-        self.collapse_button.clicked.connect(self._toggle_collapsed)
+        self.collapse_button.clicked.connect(self._toggle_controls)
         self.close_button.setToolTip("Minimize prxmpt to the system tray")
         self.close_button.clicked.connect(self.minimize_to_tray)
         self.microphone_button.setToolTip("Enable or disable microphone capture")
@@ -342,6 +321,8 @@ class MainWindow(QMainWindow):
         self.live_button.clicked.connect(self.toggle_session)
         self.ask_button.clicked.connect(self.generate_answer)
         self.clear_button.clicked.connect(self._clear_workspace)
+        self.plot_toggle_button.clicked.connect(self._toggle_plot_popup)
+        self.history_toggle_button.clicked.connect(self._toggle_history_popup)
         self.model_badge.setToolTip("Open answer and model settings")
         self.model_badge.clicked.connect(self.open_settings)
         self.auto_answer_switch.setChecked(self.config.auto_generate)
@@ -350,6 +331,19 @@ class MainWindow(QMainWindow):
         )
         self.auto_answer_switch.toggled.connect(self._set_auto_answer)
         self.stealth_switch.setToolTip("Reserved for a future prxmpt feature")
+
+    @property
+    def _subordinate_popups(self) -> tuple[PopupPanel, ...]:
+        return (
+            self.audio_popup,
+            self.activity_popup,
+            self.plot_popup,
+            self.history_popup,
+        )
+
+    def _apply_window_shape(self) -> None:
+        path = top_bar_mask(self._ui_scale)
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
     def _connect_signals(self) -> None:
         self.controller.transcript_ready.connect(self._show_transcript)
@@ -415,7 +409,9 @@ class MainWindow(QMainWindow):
         history.triggered.connect(self._open_full_history)
         menu.addSeparator()
         if self._available_release:
-            update = menu.addAction(f"Install prxmpt {self._available_release.version}")
+            update = menu.addAction(
+                f"Install prxmpt {self._available_release.version}"
+            )
             update.triggered.connect(self._prompt_update_install)
             notes = menu.addAction("Open release notes")
             notes.triggered.connect(self._open_release_notes)
@@ -425,7 +421,14 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         quit_action = menu.addAction("Quit prxmpt")
         quit_action.triggered.connect(self.quit_application)
-        menu.exec(self.settings_button.mapToGlobal(self.settings_button.rect().bottomLeft()))
+        menu.exec(
+            self.mapToGlobal(
+                QPoint(
+                    round(18 * self._ui_scale),
+                    round(TOP_BAR_SIZE[1] * self._ui_scale),
+                )
+            )
+        )
 
     def open_context(self) -> None:
         dialog = ContextDialog(self.database, self.controller.profile_id, self)
@@ -441,6 +444,7 @@ class MainWindow(QMainWindow):
         self.auto_answer_switch.setChecked(self.config.auto_generate)
         self._refresh_model_badge()
         self._refresh_audio_buttons()
+        self._apply_cluster_opacity()
 
     def _open_full_history(self) -> None:
         HistoryDialog(self.database, self).exec()
@@ -448,7 +452,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_model_badge(self) -> None:
         if self.config.answer_provider == "openai":
-            model = self.config.openai_model.replace("gpt-", "gpt-")
+            model = self.config.openai_model
             if model.startswith("gpt-5.6"):
                 model = "gpt-5.6"
         elif self.config.answer_provider == "ollama":
@@ -522,6 +526,8 @@ class MainWindow(QMainWindow):
         if not self._confirm_consent():
             return
         self.error_banner.hide()
+        self.error_mirror.hide()
+        _set_dynamic_property(self.live_button, "error", False)
         self.controller.start()
 
     def generate_answer(self) -> None:
@@ -535,8 +541,10 @@ class MainWindow(QMainWindow):
         self.answer_view.clear()
         self.answer_view.setToolTip("")
         self.error_banner.hide()
+        self.error_mirror.hide()
+        _set_dynamic_property(self.live_button, "error", False)
 
-    def _show_transcript(self, speaker: str, text: str, is_question: bool) -> None:  # noqa: ARG002
+    def _show_transcript(self, speaker: str, text: str, is_question: bool) -> None:
         if is_question and speaker == "Interviewer":
             self.question_input.setPlainText(text)
 
@@ -553,41 +561,65 @@ class MainWindow(QMainWindow):
             else "No matching context source"
         )
         self.error_banner.hide()
+        self.error_mirror.hide()
+        if self._popup_state is not PopupState.TOP_ONLY:
+            self._apply_popup_state(PopupState.PLOT)
 
     def _show_status(self, message: str) -> None:
         self.session_button.setToolTip(message)
 
     def _show_transcribing(self, active: bool) -> None:
-        self.transcription_indicator.setVisible(bool(active and self.controller.running))
+        visible = bool(active and self.controller.running)
+        self.transcription_indicator.setVisible(visible)
+        _set_dynamic_property(self.live_button, "transcribing", visible)
 
     def _show_level(self, source: str, value: float) -> None:
-        button = self.speaker_button if source == "Interviewer" else self.microphone_button
+        button = (
+            self.speaker_button if source == "Interviewer" else self.microphone_button
+        )
         _set_dynamic_property(button, "signal", value >= 0.035)
 
     def _show_error(self, message: str) -> None:
         self.error_banner.setText(message)
+        self.error_mirror.setText(message)
         self.error_banner.show()
+        self.error_mirror.show()
         self.session_button.setToolTip(message)
+        _set_dynamic_property(self.live_button, "error", True)
+        if self.isVisible() and self._popup_state is PopupState.TOP_ONLY:
+            self._apply_popup_state(PopupState.CONTROLS)
 
     def _show_source_state(self, kind: str, available: bool, message: str) -> None:
-        button = self.microphone_button if kind == "microphone" else self.speaker_button
-        enabled = (
-            self.config.microphone_enabled if kind == "microphone" else self.config.speaker_enabled
+        button = (
+            self.microphone_button if kind == "microphone" else self.speaker_button
         )
-        state = "connected" if available else ("retrying" if enabled and self.controller.running else "off")
+        enabled = (
+            self.config.microphone_enabled
+            if kind == "microphone"
+            else self.config.speaker_enabled
+        )
+        state = (
+            "connected"
+            if available
+            else ("retrying" if enabled and self.controller.running else "off")
+        )
         _set_dynamic_property(button, "sourceState", state)
         button.setToolTip(message)
 
     def _session_state(self, running: bool) -> None:
-        self.session_button.setText("LIVE" if running else "START")
-        self.session_button.setToolTip("Stop listening" if running else "Start listening")
+        self.session_button.setToolTip(
+            "Stop listening" if running else "Start listening"
+        )
         _set_dynamic_property(self.session_button, "running", running)
-        if not running:
-            self.transcription_indicator.hide()
-            for button in (self.microphone_button, self.speaker_button):
-                _set_dynamic_property(button, "signal", False)
-                _set_dynamic_property(button, "sourceState", "off")
-            self._refresh_history()
+        if running:
+            _set_dynamic_property(self.session_button, "error", False)
+            return
+        self.transcription_indicator.hide()
+        _set_dynamic_property(self.session_button, "transcribing", False)
+        for button in (self.microphone_button, self.speaker_button):
+            _set_dynamic_property(button, "signal", False)
+            _set_dynamic_property(button, "sourceState", "off")
+        self._refresh_history()
 
     def _refresh_history(self) -> None:
         while self.history_layout.count():
@@ -595,59 +627,65 @@ class MainWindow(QMainWindow):
             widget = item.widget()
             if widget:
                 widget.deleteLater()
-        sessions = self.database.list_sessions(limit=4)
+        sessions = self.database.list_sessions(limit=100)
         if not sessions:
             empty = QLabel("No saved meetings yet")
             empty.setObjectName("EmptyHistory")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty.setFixedHeight(55)
             self.history_layout.addWidget(empty)
+            self.history_layout.addStretch()
             return
+
         for index, session in enumerate(sessions):
             row = QFrame()
             row.setObjectName("MeetingRow")
             row.setProperty("last", index == len(sessions) - 1)
+            row.setFixedHeight(35)
             layout = QHBoxLayout(row)
-            layout.setContentsMargins(37, 0, 31, 0)
+            layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
             title = QLabel(session_display_title(session))
             title.setObjectName("MeetingTitle")
-            title.setFixedWidth(219)
+            title.setFixedWidth(214)
             layout.addWidget(title)
-            layout.addSpacing(5)
             stamp = QLabel(session_display_time(session.started_at))
             stamp.setObjectName("MeetingTime")
-            stamp.setFixedWidth(60)
+            stamp.setFixedWidth(163)
             layout.addWidget(stamp)
-            layout.addStretch()
             transcript = self._icon_button(
-                object_name="MeetingTranscript",
-                asset="meeting-transcript.png",
-                icon_size=(25, 25),
+                "MeetingTranscript",
+                "meeting-transcript.png",
+                (27, 27),
             )
             transcript.setToolTip("View transcript")
-            transcript.clicked.connect(partial(self._view_session_content, session.id, "transcript"))
+            transcript.clicked.connect(
+                partial(self._view_session_content, session.id, "transcript")
+            )
             notes = self._icon_button(
-                object_name="MeetingNotes",
-                asset="meeting-notes.png",
-                icon_size=(26, 26),
+                "MeetingNotes",
+                "meeting-notes.png",
+                (28, 28),
             )
             notes.setToolTip("View generated answers and notes")
-            notes.clicked.connect(partial(self._view_session_content, session.id, "answers"))
+            notes.clicked.connect(
+                partial(self._view_session_content, session.id, "answers")
+            )
             delete = self._icon_button(
-                object_name="MeetingDelete",
-                asset="meeting-delete.png",
-                icon_size=(25, 25),
+                "MeetingDelete",
+                "meeting-delete.png",
+                (27, 27),
             )
             delete.setToolTip("Delete meeting")
             delete.clicked.connect(partial(self._delete_session, session.id))
-            transcript.setFixedSize(25, 25)
-            notes.setFixedSize(26, 26)
-            delete.setFixedSize(25, 25)
+            transcript.setFixedSize(27, 27)
+            notes.setFixedSize(28, 28)
+            delete.setFixedSize(27, 27)
             layout.addWidget(transcript)
-            layout.addSpacing(1)
             layout.addWidget(notes)
             layout.addWidget(delete)
             self.history_layout.addWidget(row)
+        self.history_layout.addStretch()
 
     def _view_session_content(self, session_id: int, mode: str) -> None:
         SessionContentDialog(self.database, session_id, mode, self).exec()
@@ -664,8 +702,7 @@ class MainWindow(QMainWindow):
 
     def check_updates(self) -> None:
         self._manual_update_check = True
-        self.session_button.setText("CHECK")
-        self.session_button.setToolTip("Checking for prxmpt updates…")
+        self.settings_button.setToolTip("Checking for prxmpt updates…")
         self.updater.check_for_updates()
 
     def _automatic_update_check(self) -> None:
@@ -697,6 +734,7 @@ class MainWindow(QMainWindow):
             )
         self._manual_update_check = False
         _set_dynamic_property(self.settings_button, "updateAvailable", False)
+        self.settings_button.setToolTip("Settings, profile, context and updates")
         self._session_state(self.controller.running)
 
     def _show_update_check_failed(self, message: str) -> None:
@@ -717,11 +755,14 @@ class MainWindow(QMainWindow):
             "Install prxmpt update",
             f"Download and install prxmpt {self._available_release.version}?",
         ) == QMessageBox.StandardButton.Yes:
-            self.session_button.setText("0%")
+            self.settings_button.setToolTip("Downloading prxmpt update: 0%")
             self.updater.download(self._available_release)
 
     def _show_update_progress(self, percent: int) -> None:
-        self.session_button.setText(f"{max(0, min(100, percent))}%")
+        safe_percent = max(0, min(100, percent))
+        self.settings_button.setToolTip(
+            f"Downloading prxmpt update: {safe_percent}%"
+        )
 
     def _show_update_download_failed(self, message: str) -> None:
         self._show_error(f"Update failed safely: {message}")
@@ -747,26 +788,97 @@ class MainWindow(QMainWindow):
         )
         _set_dynamic_property(self.drag_button, "unlocked", not self._drag_locked)
 
-    def _toggle_collapsed(self) -> None:
-        if self._collapsed:
-            self.body.show()
-            self._designer_form.setFixedSize(DESIGN_WIDTH, DESIGN_HEIGHT)
-            self.popup_frame.setFixedSize(DESIGN_WIDTH, DESIGN_HEIGHT)
-            if self._graphics_scene is not None:
-                self._graphics_scene.setSceneRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT)
-            self.setFixedSize(*self._expanded_size)
-            self.collapse_button.setToolTip("Collapse prxmpt to the title bar")
-            self._collapsed = False
+    def _toggle_controls(self) -> None:
+        self._apply_popup_state(controls_toggle_target(self._popup_state))
+
+    def _toggle_plot_popup(self) -> None:
+        self._apply_popup_state(plot_toggle_target(self._popup_state))
+
+    def _toggle_history_popup(self) -> None:
+        target = history_toggle_target(self._popup_state)
+        if target is PopupState.HISTORY:
+            self._refresh_history()
+        self._apply_popup_state(target)
+
+    def _apply_popup_state(self, state: PopupState) -> None:
+        self._popup_state = state
+        self.plot_popup.hide()
+        self.history_popup.hide()
+        if state is PopupState.TOP_ONLY:
+            self.audio_popup.hide()
+            self.activity_popup.hide()
+        else:
+            self.audio_popup.show()
+            self.activity_popup.show()
+            if state is PopupState.PLOT:
+                self.plot_popup.show()
+            elif state is PopupState.HISTORY:
+                self.history_popup.show()
+        _set_dynamic_property(
+            self.plot_toggle_button,
+            "selected",
+            state is PopupState.PLOT,
+        )
+        _set_dynamic_property(
+            self.history_toggle_button,
+            "selected",
+            state is PopupState.HISTORY,
+        )
+        self.collapse_button.setToolTip(
+            "Show audio controls"
+            if state is PopupState.TOP_ONLY
+            else "Hide all popup controls"
+        )
+        self._position_cluster()
+        self._raise_visible_popups()
+
+    def _position_cluster(self) -> None:
+        if self._syncing_cluster_position:
             return
-        self._expanded_size = (self.width(), self.height())
-        self.body.hide()
-        self._designer_form.setFixedSize(DESIGN_WIDTH, COLLAPSED_HEIGHT)
-        self.popup_frame.setFixedSize(DESIGN_WIDTH, COLLAPSED_HEIGHT)
-        if self._graphics_scene is not None:
-            self._graphics_scene.setSceneRect(0, 0, DESIGN_WIDTH, COLLAPSED_HEIGHT)
-        self.setFixedSize(self.width(), round(COLLAPSED_HEIGHT * self._ui_scale))
-        self.collapse_button.setToolTip("Expand prxmpt")
-        self._collapsed = True
+        self._syncing_cluster_position = True
+        try:
+            positions = popup_cluster_positions(
+                self.x(),
+                self.y(),
+                self._ui_scale,
+            )
+            self.audio_popup.move(*positions["audio"])
+            self.activity_popup.move(*positions["activity"])
+            self.plot_popup.move(*positions["plot"])
+            self.history_popup.move(*positions["history"])
+        finally:
+            self._syncing_cluster_position = False
+
+    def _raise_visible_popups(self) -> None:
+        if not self.isVisible():
+            return
+        self.raise_()
+        for popup in self._subordinate_popups:
+            if popup.isVisible():
+                popup.raise_()
+
+    def _apply_cluster_opacity(self) -> None:
+        opacity = min(1.0, max(0.45, float(self.config.overlay_opacity)))
+        self.setWindowOpacity(opacity)
+        for popup in self._subordinate_popups:
+            popup.setWindowOpacity(opacity)
+
+    def _clamped_top_left(self, target: QPoint) -> QPoint:
+        screen = QApplication.screenAt(target) or self.screen() or QApplication.primaryScreen()
+        if not screen:
+            return target
+        area = screen.availableGeometry()
+        cluster_width, cluster_height = popup_cluster_size(
+            self._popup_state,
+            self._ui_scale,
+        )
+        target.setX(
+            max(area.left(), min(target.x(), area.right() - cluster_width + 1))
+        )
+        target.setY(
+            max(area.top(), min(target.y(), area.bottom() - cluster_height + 1))
+        )
+        return target
 
     def toggle_popup(self) -> None:
         if self.isVisible():
@@ -775,6 +887,8 @@ class MainWindow(QMainWindow):
             self._bring_to_front()
 
     def minimize_to_tray(self) -> None:
+        for popup in self._subordinate_popups:
+            popup.hide()
         self.hide()
         if self.tray and not self._tray_notice_shown:
             self.tray.showMessage(
@@ -793,7 +907,9 @@ class MainWindow(QMainWindow):
             self._bring_to_front()
 
     def _bring_to_front(self) -> None:
+        self._popup_state = PopupState.TOP_ONLY
         self.show()
+        self._apply_popup_state(PopupState.TOP_ONLY)
         self.raise_()
         self.activateWindow()
 
@@ -808,20 +924,28 @@ class MainWindow(QMainWindow):
         self._cleaned_up = True
         self.updater.shutdown()
         self.controller.shutdown()
+        for popup in self._subordinate_popups:
+            popup.close()
         if self.tray:
             self.tray.hide()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        if self._initial_geometry_applied:
-            return
-        self._initial_geometry_applied = True
-        screen = self.screen() or QApplication.primaryScreen()
-        if not screen:
-            return
-        available = screen.availableGeometry()
-        width, height = self.width(), self.height()
-        self.move(available.left() + (available.width() - width) // 2, available.top() + 12)
+        if not self._initial_geometry_applied:
+            self._initial_geometry_applied = True
+            screen = self.screen() or QApplication.primaryScreen()
+            if screen:
+                available = screen.availableGeometry()
+                width = self.width()
+                self.move(
+                    available.left() + (available.width() - width) // 2,
+                    available.top() + 12,
+                )
+        self._position_cluster()
+
+    def moveEvent(self, event: QMoveEvent) -> None:
+        super().moveEvent(event)
+        self._position_cluster()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if (
@@ -829,7 +953,9 @@ class MainWindow(QMainWindow):
             and event.button() == Qt.MouseButton.LeftButton
             and self.header.geometry().contains(event.position().toPoint())
         ):
-            self._drag_origin = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._drag_origin = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
             event.accept()
             return
         super().mousePressEvent(event)
@@ -837,12 +963,7 @@ class MainWindow(QMainWindow):
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._drag_origin is not None and event.buttons() & Qt.MouseButton.LeftButton:
             target = event.globalPosition().toPoint() - self._drag_origin
-            screen = self.screen() or QApplication.primaryScreen()
-            if screen:
-                area = screen.availableGeometry()
-                target.setX(max(area.left(), min(target.x(), area.right() - self.width() + 1)))
-                target.setY(max(area.top(), min(target.y(), area.bottom() - self.height() + 1)))
-            self.move(target)
+            self.move(self._clamped_top_left(target))
             event.accept()
             return
         super().mouseMoveEvent(event)
@@ -868,7 +989,8 @@ class MainWindow(QMainWindow):
                 and self._drag_origin is not None
                 and event.buttons() & Qt.MouseButton.LeftButton
             ):
-                self.move(event.globalPosition().toPoint() - self._drag_origin)
+                target = event.globalPosition().toPoint() - self._drag_origin
+                self.move(self._clamped_top_left(target))
                 return True
             if event.type() == QEvent.Type.MouseButtonRelease:
                 self._drag_origin = None

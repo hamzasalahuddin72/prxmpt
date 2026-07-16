@@ -10,6 +10,8 @@
 - Keeps the complete canvas proportional when it must scale down for a smaller
   Windows work area.
 - Preserves always-on-top, drag lock, collapse and minimize-to-tray behaviour.
+- Clamps the collapsed corner radius and applies a rounded native window mask,
+  preventing the hidden title bar from showing a square black outline.
 
 ## Manually editable interface
 

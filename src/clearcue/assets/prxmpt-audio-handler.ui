@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PrxmptAudioHandlerForm</class>
+ <widget class="QWidget" name="AudioHandlerRoot">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>516</width><height>161</height></rect></property>
+  <property name="minimumSize"><size><width>516</width><height>161</height></size></property>
+  <property name="maximumSize"><size><width>516</width><height>161</height></size></property>
+  <widget class="QFrame" name="AudioCard">
+   <property name="geometry"><rect><x>0</x><y>22</y><width>110</width><height>118</height></rect></property>
+   <property name="minimumSize"><size><width>110</width><height>118</height></size></property>
+   <property name="maximumSize"><size><width>110</width><height>118</height></size></property>
+   <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+   <widget class="QPushButton" name="MicrophoneButton">
+    <property name="geometry"><rect><x>26</x><y>15</y><width>35</width><height>35</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="icon"><iconset><normaloff>microphone.png</normaloff>microphone.png</iconset></property>
+    <property name="iconSize"><size><width>35</width><height>35</height></size></property>
+   </widget>
+   <widget class="QPushButton" name="SpeakerButton">
+    <property name="geometry"><rect><x>21</x><y>55</y><width>45</width><height>45</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="icon"><iconset><normaloff>speaker.png</normaloff>speaker.png</iconset></property>
+    <property name="iconSize"><size><width>45</width><height>45</height></size></property>
+   </widget>
+   <widget class="QPushButton" name="LiveButton">
+    <property name="geometry"><rect><x>79</x><y>43</y><width>15</width><height>15</height></rect></property>
+    <property name="minimumSize"><size><width>15</width><height>15</height></size></property>
+    <property name="maximumSize"><size><width>15</width><height>15</height></size></property>
+    <property name="text"><string/></property>
+   </widget>
+  </widget>
+  <widget class="QFrame" name="QuestionCard">
+   <property name="geometry"><rect><x>118</x><y>0</y><width>398</width><height>161</height></rect></property>
+   <property name="minimumSize"><size><width>398</width><height>161</height></size></property>
+   <property name="maximumSize"><size><width>398</width><height>161</height></size></property>
+   <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+   <widget class="QPlainTextEdit" name="QuestionInput">
+    <property name="geometry"><rect><x>35</x><y>8</y><width>327</width><height>110</height></rect></property>
+    <property name="placeholderText"><string>Detected question or type your own…</string></property>
+   </widget>
+   <widget class="QPushButton" name="AnswerButton">
+    <property name="geometry"><rect><x>43</x><y>129</y><width>100</width><height>21</height></rect></property>
+    <property name="text"><string>Answer</string></property>
+   </widget>
+   <widget class="QLabel" name="TranscriptionIndicator">
+    <property name="geometry"><rect><x>183</x><y>114</y><width>45</width><height>45</height></rect></property>
+    <property name="pixmap"><pixmap>transcribing.png</pixmap></property>
+    <property name="scaledContents"><bool>true</bool></property>
+    <property name="alignment"><set>Qt::AlignCenter</set></property>
+    <property name="visible"><bool>false</bool></property>
+   </widget>
+   <widget class="QPushButton" name="ClearButton">
+    <property name="geometry"><rect><x>265</x><y>129</y><width>100</width><height>21</height></rect></property>
+    <property name="text"><string>Clear</string></property>
+   </widget>
+   <widget class="QLabel" name="PopupError">
+    <property name="geometry"><rect><x>35</x><y>42</y><width>327</width><height>67</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="wordWrap"><bool>true</bool></property>
+    <property name="visible"><bool>false</bool></property>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

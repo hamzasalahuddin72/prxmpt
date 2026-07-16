@@ -8,18 +8,22 @@ QWidget {
     font-family: "Segoe UI";
     font-size: 10pt;
 }
-QWidget#TransparentRoot, QWidget#TransparentPanel, QMainWindow {
+QWidget#TransparentRoot,
+QWidget#TransparentPanel,
+QWidget#TopBarRoot,
+QWidget#AudioHandlerRoot,
+QWidget#ActivityButtonsRoot,
+QWidget#PlotPopupRoot,
+QWidget#HistoryPopupRoot,
+QWidget#HistoryContents,
+QGraphicsView#PopupGraphicsView,
+QMainWindow {
     background: transparent;
-}
-QFrame#PopupRoot {
-    background: #000000;
-    border: 1px solid #81817a;
-    border-radius: 58px;
 }
 QFrame#PopupHeader {
     background: rgba(63, 92, 114, 77);
     border: 1px solid #000000;
-    border-radius: 32px;
+    border-radius: 23px;
 }
 QLabel#PopupBrand {
     background: transparent;
@@ -43,14 +47,16 @@ QPushButton#SettingsIcon[updateAvailable="true"] {
     border-radius: 17px;
 }
 
-QFrame#AudioCard,
-QFrame#QuestionCard,
-QFrame#AnswerCard {
-    background: #1f1f20;
-    border: 0;
+QFrame#AudioCard {
+    background: rgba(0, 0, 0, 51);
+    border: 1px solid rgba(0, 142, 218, 170);
+    border-radius: 55px;
+}
+QFrame#QuestionCard {
+    background: rgba(230, 224, 233, 26);
+    border: 1px solid rgba(255, 255, 255, 64);
     border-radius: 58px;
 }
-QFrame#AudioCard { background: rgba(255, 255, 255, 31); }
 QPushButton#AudioSourceButton {
     padding: 0;
     margin: 0;
@@ -77,21 +83,19 @@ QPushButton#ModelBadge:hover { border-color: #25cfff; }
 QPushButton#LiveButton {
     padding: 0;
     background: #67696d;
-    color: #ffffff;
     border: 0;
-    border-radius: 14px;
-    font-size: 9pt;
-    font-weight: 700;
+    border-radius: 7px;
 }
 QPushButton#LiveButton[running="true"] { background: #34c759; }
+QPushButton#LiveButton[error="true"] { background: #ff453a; }
 QPushButton#LiveButton:hover { border: 1px solid #ffffff; }
 
 QPlainTextEdit#QuestionInput {
     background: transparent;
     color: #f8f8f9;
     border: 0;
-    padding: 4px 6px;
-    font-size: 15pt;
+    padding: 0;
+    font-size: 12pt;
     selection-background-color: #0a9fe8;
 }
 QPushButton#AnswerButton,
@@ -109,12 +113,16 @@ QPushButton#SessionPill {
 }
 QPushButton#AnswerButton {
     background: #069ee7;
-    border-radius: 15px;
+    border-radius: 11px;
+    font-size: 9pt;
+    padding: 0;
 }
 QPushButton#AnswerButton:hover { background: #25cfff; color: #071016; }
 QPushButton#ClearButton {
     background: #9b9ca1;
-    border-radius: 15px;
+    border-radius: 11px;
+    font-size: 9pt;
+    padding: 0;
 }
 QPushButton#ClearButton:hover { background: #c8c9cd; color: #111111; }
 QPushButton#SessionPill {
@@ -131,16 +139,39 @@ QPushButton#SessionPill[running="true"] {
     color: #07120b;
 }
 
-QPlainTextEdit#AnswerView {
-    background: #252527;
-    color: #f8f8f9;
-    border: 1px solid #9b9ca1;
+QPushButton#PlotToggleButton,
+QPushButton#HistoryToggleButton {
+    color: #ffffff;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    padding: 0;
+    font-size: 9pt;
+}
+QPushButton#PlotToggleButton { background: #34c759; }
+QPushButton#HistoryToggleButton { background: #6155f5; }
+QPushButton#PlotToggleButton[selected="true"],
+QPushButton#HistoryToggleButton[selected="true"] {
+    border: 1px solid #ffffff;
+}
+QPushButton#PlotToggleButton:hover,
+QPushButton#HistoryToggleButton:hover { border: 1px solid #ffffff; }
+
+QFrame#PlotCard {
+    background: #1a1a1a;
+    border: 0;
     border-radius: 58px;
-    padding: 18px 20px;
-    font-size: 15.5pt;
+}
+QPlainTextEdit#AnswerView {
+    background: #202021;
+    color: #f8f8f9;
+    border: 1px solid rgba(255, 255, 255, 38);
+    border-radius: 58px;
+    padding: 17px 21px;
+    font-size: 11.5pt;
     selection-background-color: #0a9fe8;
 }
-QLabel#PopupError {
+QLabel#PopupError,
+QLabel#PopupErrorMirror {
     background: #ffff00;
     color: #000000;
     border-radius: 8px;
@@ -158,14 +189,17 @@ QFrame#HistoryCard {
     border: 0;
     border-radius: 58px;
 }
+QScrollArea#HistoryScroll,
+QScrollArea#HistoryScroll QWidget#qt_scrollarea_viewport {
+    background: transparent;
+    border: 0;
+}
 QFrame#MeetingRow {
     background: transparent;
     border: 0;
-    border-bottom: 1px solid #4b5962;
-    min-height: 25px;
-    max-height: 29px;
+    min-height: 35px;
+    max-height: 35px;
 }
-QFrame#MeetingRow[last="true"] { border-bottom: 0; }
 QLabel#MeetingTitle,
 QLabel#MeetingTime,
 QLabel#EmptyHistory {
@@ -173,7 +207,7 @@ QLabel#EmptyHistory {
     color: #f4f5f7;
 }
 QLabel#MeetingTitle { font-size: 10pt; }
-QLabel#MeetingTime { font-size: 10pt; }
+QLabel#MeetingTime { font-size: 10pt; font-weight: 600; }
 QLabel#EmptyHistory { padding: 18px; color: #9ea7ad; }
 QPushButton#MeetingTranscript,
 QPushButton#MeetingNotes,

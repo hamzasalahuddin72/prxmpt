@@ -19,15 +19,27 @@ def test_approved_svg_assets_are_byte_exact() -> None:
 def test_extracted_controls_are_the_original_embedded_svg_images() -> None:
     manifest = json.loads(resource_path("asset_manifest.json").read_text(encoding="utf-8"))
     expected = {digest for name, digest in manifest.items() if name != "prxmpt-logo.png"}
-    root = ET.parse(resource_path("prxmpt-ui.svg")).getroot()
     embedded = set()
-    for element in root.iter():
-        if not element.tag.endswith("image"):
-            continue
-        href = element.attrib.get("{http://www.w3.org/1999/xlink}href", "")
-        payload = base64.b64decode(href.split(",", 1)[1])
-        embedded.add(hashlib.sha256(payload).hexdigest())
+    popup_svgs = json.loads(
+        resource_path("popup_svg_manifest.json").read_text(encoding="utf-8")
+    )
+    for filename in popup_svgs:
+        root = ET.parse(resource_path(filename)).getroot()
+        for element in root.iter():
+            if not element.tag.endswith("image"):
+                continue
+            href = element.attrib.get("{http://www.w3.org/1999/xlink}href", "")
+            payload = base64.b64decode(href.split(",", 1)[1])
+            embedded.add(hashlib.sha256(payload).hexdigest())
     assert embedded == expected
+
+
+def test_supplied_popup_svgs_are_preserved_byte_exact() -> None:
+    manifest = json.loads(
+        resource_path("popup_svg_manifest.json").read_text(encoding="utf-8")
+    )
+    for filename, expected in manifest.items():
+        assert hashlib.sha256(resource_path(filename).read_bytes()).hexdigest() == expected
 
 
 def test_bundled_model_requires_complete_local_snapshot(monkeypatch, tmp_path) -> None:

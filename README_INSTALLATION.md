@@ -31,7 +31,7 @@ This is the quickest way to test the application before producing an installer.
 Future launches can use the same `INSTALL_AND_RUN.bat`. It reuses the existing
 environment rather than downloading everything again.
 
-## Option 2 — create the prxmpt 1.0.9 update installer
+## Option 2 — create the prxmpt 1.0.10 update installer
 
 The supplied build creates a self-contained Windows application. End users do
 not need Python after installing that build.
@@ -52,7 +52,7 @@ not need Python after installing that build.
    <https://jrsoftware.org/isdl.php> and run the builder again.
 6. The finished installer appears at:
 
-   `installer\output\prxmptUpdate_1.0.9.exe`
+   `installer\output\prxmptUpdate_1.0.10.exe`
 
 You can also run the build directly from PowerShell:
 
@@ -63,7 +63,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 PyInstaller must build a Windows executable on Windows. The included GitHub
 Actions workflow can perform the same build on a Windows runner and return the
-installer as a workflow artifact. Pushing a version tag such as `v1.0.9` also
+installer as a workflow artifact. Pushing a version tag such as `v1.0.10` also
 publishes the installer as a permanent GitHub Release for the in-app updater.
 
 If a previous build was interrupted and left a broken `.venv-build` folder, the
@@ -147,16 +147,17 @@ OpenAI API usage is billed separately from ChatGPT subscriptions.
 
 ## Starting a practice session
 
-1. Start the Teams, Zoom or browser test call.
-2. Leave the blue microphone and speaker buttons enabled for both sources, or
+1. Start the Teams, Zoom or browser test call. prxmpt opens as only the compact
+   top bar; click the eye button to show the audio handler and activity buttons.
+2. Leave the microphone and speaker buttons enabled for both sources, or
    disable either source by clicking its button.
-3. Click **START** beside the audio controls. Confirm permission the first time
-   prxmpt asks; the button displays `LIVE` while listening.
+3. Click the small status dot beside the audio controls. Confirm permission the
+   first time prxmpt asks; the dot turns green while listening.
 4. Detected questions appear in the upper question field.
 5. Click **Answer** or enable the **Auto answer** switch.
 6. The three-dot indicator appears only while speech is actively being
-   transcribed. Click `LIVE` again when finished. Recent meetings appear at the
-   bottom with transcript, generated-answer and delete controls.
+   transcribed. Click the green status dot again when finished. Use the Plot and
+   History buttons to switch between the generated answer and saved meetings.
 7. The red X hides prxmpt in the system tray; use the tray icon to reopen or
    quit it.
 
@@ -198,14 +199,14 @@ more reliable simultaneous playback and microphone capture.
 
 The bundled model loads from disk when listening starts; it should not download.
 Keep `tiny.en` with CPU/`int8` for minimum latency. If the application reports
-that bundled `model.bin` is missing, reinstall v1.0.9 because the installer is
+that bundled `model.bin` is missing, reinstall v1.0.10 because the installer is
 incomplete or was modified. Optional `base.en` and `small.en` models still use
 the online cache and prxmpt repairs an interrupted cache once.
 
 ### CUDA or CTranslate2 error
 
 Select CPU and `int8`. GPU mode requires compatible NVIDIA libraries that are
-not bundled by the basic installer. prxmpt 1.0.9 also performs this fallback
+not bundled by the basic installer. prxmpt 1.0.10 also performs this fallback
 automatically if CUDA fails during the first inference.
 
 ### OpenAI answer fails
@@ -218,7 +219,7 @@ automatically if CUDA fails during the first inference.
 ### Windows SmartScreen warning
 
 Locally built applications are unsigned. For public distribution, sign both
-`prxmpt.exe` and `prxmptUpdate_1.0.9.exe` with an Authenticode code-signing
+`prxmpt.exe` and `prxmptUpdate_1.0.10.exe` with an Authenticode code-signing
 certificate. Do not advise users to bypass organisational security controls.
 
 ## Uninstalling

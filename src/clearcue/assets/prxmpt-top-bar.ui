@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PrxmptTopBarForm</class>
+ <widget class="QWidget" name="TopBarRoot">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>516</width><height>46</height></rect></property>
+  <property name="minimumSize"><size><width>516</width><height>46</height></size></property>
+  <property name="maximumSize"><size><width>516</width><height>46</height></size></property>
+  <widget class="QFrame" name="PopupHeader">
+   <property name="geometry"><rect><x>0</x><y>0</y><width>516</width><height>46</height></rect></property>
+   <property name="minimumSize"><size><width>516</width><height>46</height></size></property>
+   <property name="maximumSize"><size><width>516</width><height>46</height></size></property>
+   <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+   <widget class="QPushButton" name="SettingsIcon">
+    <property name="geometry"><rect><x>18</x><y>11</y><width>24</width><height>24</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="icon"><iconset><normaloff>settings.png</normaloff>settings.png</iconset></property>
+    <property name="iconSize"><size><width>24</width><height>24</height></size></property>
+   </widget>
+   <widget class="QLabel" name="PopupBrand">
+    <property name="geometry"><rect><x>209</x><y>0</y><width>102</width><height>46</height></rect></property>
+    <property name="pixmap"><pixmap>prxmpt-logo.png</pixmap></property>
+    <property name="scaledContents"><bool>true</bool></property>
+    <property name="alignment"><set>Qt::AlignCenter</set></property>
+   </widget>
+   <widget class="QPushButton" name="DragIcon">
+    <property name="geometry"><rect><x>388</x><y>12</y><width>22</width><height>22</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="icon"><iconset><normaloff>drag-lock.png</normaloff>drag-lock.png</iconset></property>
+    <property name="iconSize"><size><width>22</width><height>22</height></size></property>
+   </widget>
+   <widget class="QPushButton" name="PrivacyIcon">
+    <property name="geometry"><rect><x>434</x><y>12</y><width>23</width><height>22</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="icon"><iconset><normaloff>collapse.png</normaloff>collapse.png</iconset></property>
+    <property name="iconSize"><size><width>22</width><height>22</height></size></property>
+   </widget>
+   <widget class="QPushButton" name="PopupClose">
+    <property name="geometry"><rect><x>481</x><y>15</y><width>17</width><height>17</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="icon"><iconset><normaloff>exit.png</normaloff>exit.png</iconset></property>
+    <property name="iconSize"><size><width>17</width><height>17</height></size></property>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

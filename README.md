@@ -15,7 +15,7 @@ prxmpt deliberately does not implement screen-capture exclusion, screen-share
 evasion, DLL injection, proctoring bypass or hidden processes. Its popup is an
 ordinary visible Windows window and should be used for practice or in
 contexts where assistance and transcription are allowed. The Stealth switch in
-1.0.9 is a non-functional placeholder.
+1.0.10 is a non-functional placeholder.
 
 ## Main capabilities
 
@@ -30,9 +30,10 @@ contexts where assistance and transcription are allowed. The Stealth switch in
 - Local grounded-outline mode
 - OpenAI Responses API provider
 - Local Ollama provider
-- Fixed 551×827 top-centre PySide6 popup based on the approved SVG geometry
-- Uniform whole-canvas downscaling on smaller Windows work areas
-- Qt Widgets Designer source at `src/clearcue/assets/prxmpt-main.ui`
+- Five coordinated fixed-size top-centre PySide6 popup surfaces
+- Top-bar-only startup with mutually exclusive Plot and History views
+- Uniform whole-cluster downscaling on smaller Windows work areas
+- Five editable Qt Widgets Designer forms in `src/clearcue/assets/`
 - Exact SVG-derived PNG controls packaged as native Qt button assets
 - Independent live microphone and meeting-audio controls
 - SQLite profiles, documents, transcripts and generated-answer history
@@ -94,9 +95,9 @@ python -m clearcue.main
 ```
 
 To edit the popup visually, run `pyside6-designer` from the same environment and
-open `src/clearcue/assets/prxmpt-main.ui`. The `.ui` form is loaded directly by
-the application, so saved layout changes can be tested by restarting the source
-application without rebuilding an installer. See
+open any of the five `prxmpt-*.ui` component forms in `src/clearcue/assets/`.
+The forms are loaded directly by the application, so saved layout changes can
+be tested by restarting the source application without rebuilding an installer. See
 [`docs/EDIT_UI_WITH_QT_DESIGNER.md`](docs/EDIT_UI_WITH_QT_DESIGNER.md).
 
 The application can also be launched using `INSTALL_AND_RUN.bat`.
@@ -111,9 +112,9 @@ The application can also be launched using `INSTALL_AND_RUN.bat`.
 4. Downloads and validates the distributable `tiny.en` faster-whisper snapshot.
 5. Builds an onedir PyInstaller application containing that local speech model.
 6. Compiles `installer/prxmpt.iss` with Inno Setup.
-7. Produces `installer/output/prxmptUpdate_1.0.9.exe`.
+7. Produces `installer/output/prxmptUpdate_1.0.10.exe`.
 
-Tagged builds such as `v1.0.9` are also published as permanent GitHub Releases.
+Tagged builds such as `v1.0.10` are also published as permanent GitHub Releases.
 Installed clients query the public latest-release endpoint, compare semantic
 versions, download in the background and verify GitHub's SHA-256 asset digest
 before starting a silent in-place update.

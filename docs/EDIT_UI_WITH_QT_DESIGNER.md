@@ -1,12 +1,18 @@
-# Editing the prxmpt popup with Qt Widgets Designer
+# Editing the prxmpt popup components with Qt Widgets Designer
 
-The running popup is defined by:
+prxmpt 1.0.10 uses five independent Designer forms in
+`src\clearcue\assets`:
 
-`src/clearcue/assets/prxmpt-main.ui`
+| Form | Logical size | Purpose |
+|---|---:|---|
+| `prxmpt-top-bar.ui` | 516 × 46 | Settings, logo, drag, hide and tray controls |
+| `prxmpt-audio-handler.ui` | 516 × 161 | Audio sources, live status and question controls |
+| `prxmpt-activity-buttons.ui` | 191 × 22 | Plot and History view toggles |
+| `prxmpt-plot-popup.ui` | 516 × 393 | Generated answer and answer controls |
+| `prxmpt-history-popup.ui` | 516 × 390 | Scrollable saved-session list |
 
-This is an ordinary Qt Designer form loaded directly by PySide6 at runtime. You
-can change the layout without editing generated Python or rebuilding the Windows
-installer after every adjustment.
+The application loads these files directly. You can change a component and test
+it from source without rebuilding the Windows installer.
 
 ## One-time Windows setup
 
@@ -19,54 +25,56 @@ py -3.12 -m venv .venv-ui
 .\.venv-ui\Scripts\pyside6-designer.exe
 ```
 
-Open `src\clearcue\assets\prxmpt-main.ui` in Designer.
+Open one of the five `.ui` files listed above.
 
 ## Previewing changes
 
-Save the `.ui` file, close the running source instance of prxmpt, then run:
+Save the form, close the running source instance of prxmpt, then run:
 
 ```powershell
 .\.venv-ui\Scripts\python.exe -m clearcue.main
 ```
 
-An installer rebuild is only needed when the patch is ready to distribute.
+An installer rebuild is only needed when a patch is ready to distribute.
 
-## Reference geometry
+## Component positioning
 
-The form uses a fixed logical canvas. Do not change the outer canvas unless a
-new approved reference size replaces it.
+The individual component sizes are fixed. The cluster controller positions
+them with these logical gaps:
 
-| Object | Position | Size |
-|---|---:|---:|
-| `TransparentRoot` | `0, 0` | `551 × 827` |
-| `PopupHeader` | `20, 12` | `515 × 64` |
-| `AudioCard` | `20, 12` inside the body | `166 × 178` |
-| `QuestionCard` | `192, 13` inside the body | `350 × 178` |
-| `AnswerCard` | `10, 203` inside the body | `532 × 393` |
-| `HistoryCard` | `8, 607` inside the body | `537 × 132` |
+- Top bar to audio handler: 8 px
+- Audio handler to activity buttons: 6 px
+- Activity buttons to Plot or History: 6 px
+- Activity buttons are horizontally centred beneath the 516 px surfaces
+- Plot and History use the same top-left anchor and are never visible together
 
-The body begins at `0, 77`, so its child coordinates correspond to the approved
-SVG positions. On a smaller work area, the application scales the whole fixed
-canvas uniformly instead of allowing individual sections to stretch.
+Do not add inter-component spacing inside the forms. Shared positioning and
+screen-edge clamping are implemented in `src\clearcue\ui\popup_helpers.py`.
+The complete cluster scales uniformly on a smaller screen.
 
 ## Safe editing rules
 
-- Keep every outer section's minimum and maximum size identical.
-- Edit spacer widths numerically for exact alignment.
-- Keep the existing object names; Python signal wiring and the QSS theme use
-  them to find and style controls.
-- Keep image files beside the `.ui` file. Designer and the runtime loader use
-  that folder as their resource working directory.
-- Do not run `pyside6-uic` and then edit its generated Python output. The app
-  loads the `.ui` source directly.
-- `ToggleSwitch` is a custom Python control. Designer may display it as a custom
-  widget placeholder, while the running app renders the approved switch asset.
+- Keep each root widget's minimum and maximum size equal to its reference size.
+- Keep existing object names. Python signal wiring and the theme locate widgets
+  by these names.
+- Keep image files beside the forms. Designer and the runtime loader use that
+  directory as their working directory.
+- Keep transparent root backgrounds; each component is a frameless native popup.
+- Do not run `pyside6-uic` and edit generated Python. prxmpt loads the `.ui`
+  source directly.
+- `ToggleSwitch` is a custom Python control. Designer can show it as a custom
+  widget placeholder; the app renders the approved switch asset.
+- If a component's outer shape changes, update its mask function in
+  `src\clearcue\ui\popup_cluster.py` so click-through corners remain accurate.
 
-## Styling and functionality
+## SVG and icon sources
 
-- Change geometry, margins and widget hierarchy in `prxmpt-main.ui`.
-- Change colours, borders, fonts and radii in `src/clearcue/ui/theme.py`.
-- Change icons in `src/clearcue/assets/` while preserving their filenames, or
-  update both the `.ui` reference and `main_window.py` asset mapping.
-- Keep button actions, transcription state and meeting history logic in
-  `src/clearcue/ui/main_window.py`.
+The five approved `prxmpt-*.svg` files are retained beside the Designer forms.
+Tests verify their exact SHA-256 values and confirm that every embedded raster
+icon matches the optimized PNG used by the Qt controls.
+
+- Edit component geometry in the corresponding `.ui` form.
+- Edit colours, borders, fonts and radii in `src\clearcue\ui\theme.py`.
+- Preserve asset filenames when replacing icons, then update
+  `asset_manifest.json` intentionally.
+- Keep behavior and signal wiring in `src\clearcue\ui\main_window.py`.
