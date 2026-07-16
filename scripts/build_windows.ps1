@@ -108,7 +108,7 @@ function Find-InnoCompiler {
     return $null
 }
 
-Write-Host "prxmpt 1.0.8 Windows update builder" -ForegroundColor Cyan
+Write-Host "prxmpt 1.0.9 Windows update builder" -ForegroundColor Cyan
 Write-Host "Project: $ProjectRoot"
 Write-Host ""
 
@@ -169,12 +169,12 @@ if (-not $InnoCompiler) {
     throw "Inno Setup was installed but ISCC.exe could not be located. Restart Windows, then run BUILD_INSTALLER.bat again."
 }
 
-Write-Host "Creating ClearCueUpdate_1.0.8.exe..."
+Write-Host "Creating prxmptUpdate_1.0.9.exe..."
 Invoke-Checked -Command $InnoCompiler -Arguments @("installer\prxmpt.iss")
 
-$Installer = Join-Path $ProjectRoot "installer\output\ClearCueUpdate_1.0.8.exe"
+$Installer = Join-Path $ProjectRoot "installer\output\prxmptUpdate_1.0.9.exe"
 if (-not (Test-Path $Installer)) {
-    throw "The installer compiler finished but ClearCueUpdate_1.0.8.exe was not created."
+    throw "The installer compiler finished but prxmptUpdate_1.0.9.exe was not created."
 }
 
 Write-Host ""

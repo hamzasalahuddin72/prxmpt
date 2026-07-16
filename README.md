@@ -15,7 +15,7 @@ prxmpt deliberately does not implement screen-capture exclusion, screen-share
 evasion, DLL injection, proctoring bypass or hidden processes. Its popup is an
 ordinary visible Windows window and should be used for practice or in
 contexts where assistance and transcription are allowed. The Stealth switch in
-1.0.8 is a non-functional placeholder.
+1.0.9 is a non-functional placeholder.
 
 ## Main capabilities
 
@@ -30,7 +30,9 @@ contexts where assistance and transcription are allowed. The Stealth switch in
 - Local grounded-outline mode
 - OpenAI Responses API provider
 - Local Ollama provider
-- 551×827 top-centre PySide6 popup based on the approved SVG component geometry
+- Fixed 551×827 top-centre PySide6 popup based on the approved SVG geometry
+- Uniform whole-canvas downscaling on smaller Windows work areas
+- Qt Widgets Designer source at `src/clearcue/assets/prxmpt-main.ui`
 - Exact SVG-derived PNG controls packaged as native Qt button assets
 - Independent live microphone and meeting-audio controls
 - SQLite profiles, documents, transcripts and generated-answer history
@@ -91,6 +93,12 @@ python -m pytest
 python -m clearcue.main
 ```
 
+To edit the popup visually, run `pyside6-designer` from the same environment and
+open `src/clearcue/assets/prxmpt-main.ui`. The `.ui` form is loaded directly by
+the application, so saved layout changes can be tested by restarting the source
+application without rebuilding an installer. See
+[`docs/EDIT_UI_WITH_QT_DESIGNER.md`](docs/EDIT_UI_WITH_QT_DESIGNER.md).
+
 The application can also be launched using `INSTALL_AND_RUN.bat`.
 
 ## Build pipeline
@@ -103,17 +111,15 @@ The application can also be launched using `INSTALL_AND_RUN.bat`.
 4. Downloads and validates the distributable `tiny.en` faster-whisper snapshot.
 5. Builds an onedir PyInstaller application containing that local speech model.
 6. Compiles `installer/prxmpt.iss` with Inno Setup.
-7. Produces `installer/output/ClearCueUpdate_1.0.8.exe`.
+7. Produces `installer/output/prxmptUpdate_1.0.9.exe`.
 
-Tagged builds such as `v1.0.8` are also published as permanent GitHub Releases.
+Tagged builds such as `v1.0.9` are also published as permanent GitHub Releases.
 Installed clients query the public latest-release endpoint, compare semantic
 versions, download in the background and verify GitHub's SHA-256 asset digest
 before starting a silent in-place update.
 
-The v1.0.8 asset deliberately keeps the `ClearCueUpdate_...` filename so an
-installed ClearCue 1.0.7 client can discover the rename release. The installed
-application, executable, shortcuts, tray menu and Windows Apps entry are all
-named `prxmpt`.
+The installed application, executable, shortcuts, tray menu, update installer
+and Windows Apps entry now consistently use the `prxmpt` name.
 
 An onedir application is intentionally used behind the single installer. Large
 Qt and AI dependencies start more reliably this way than when every dependency
@@ -150,7 +156,7 @@ The test suite covers:
 - incomplete Whisper-cache repair
 - bundled-model discovery and transcription activity reporting
 - pause-based multi-fragment question collection
-- compact-popup scaling and meeting-label helpers
+- fixed Designer geometry, compact-popup scaling and meeting-label helpers
 - release parsing, version comparison and update integrity helpers
 
 Audio-device enumeration, live WASAPI/PortAudio capture, PyInstaller output,

@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title prxmpt 1.0.8 Update Builder
+title prxmpt 1.0.9 Update Builder
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\build_windows.ps1"
 if errorlevel 1 (
   echo.
@@ -10,5 +10,5 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo ClearCueUpdate_1.0.8.exe was created successfully.
+echo prxmptUpdate_1.0.9.exe was created successfully.
 pause

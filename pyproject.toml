@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prxmpt-coach"
-version = "1.0.8"
+version = "1.0.9"
 description = "A consent-based Windows interview practice and meeting coaching assistant."
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
@@ -40,7 +40,7 @@ clearcue = "clearcue.main:main"
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-clearcue = ["assets/*.png", "assets/*.ico", "assets/*.svg", "assets/*.json"]
+clearcue = ["assets/*.png", "assets/*.ico", "assets/*.svg", "assets/*.json", "assets/*.ui"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,5 +1,5 @@
 #define MyAppName "prxmpt"
-#define MyAppVersion "1.0.8"
+#define MyAppVersion "1.0.9"
 #define MyAppPublisher "Hamza Salahuddin"
 #define MyAppExeName "prxmpt.exe"
 
@@ -13,8 +13,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=output
-; Keep the transition asset name so ClearCue 1.0.7 can discover this rename update.
-OutputBaseFilename=ClearCueUpdate_1.0.8
+OutputBaseFilename=prxmptUpdate_1.0.9
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -25,7 +24,7 @@ SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=yes
-VersionInfoVersion=1.0.8.0
+VersionInfoVersion=1.0.9.0
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -39,7 +38,7 @@ Source: "..\README_INSTALLATION.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\sample_context_template.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\PATCH_NOTES_1.0.8.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\PATCH_NOTES_1.0.9.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
