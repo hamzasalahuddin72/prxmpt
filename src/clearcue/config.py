@@ -7,7 +7,8 @@ from pathlib import Path
 from clearcue.paths import settings_path
 
 
-CURRENT_CONFIG_VERSION = 5
+CURRENT_CONFIG_VERSION = 9
+VALID_SKIN_IDS = frozenset({"midnight", "azure_knight", "rose_quartz"})
 
 
 @dataclass(slots=True)
@@ -22,6 +23,7 @@ class AppConfig:
     whisper_device: str = "cpu"
     whisper_compute_type: str = "int8"
     answer_provider: str = "local"
+    gemini_model: str = "gemini-3.5-flash"
     openai_model: str = "gpt-5.6-luna"
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3:8b"
@@ -33,9 +35,10 @@ class AppConfig:
     consent_acknowledged: bool = False
     save_transcripts: bool = True
     auto_check_updates: bool = True
-    popup_width: int = 551
-    popup_height: int = 827
+    popup_width: int = 720
+    popup_height: int = 366
     popup_drag_locked: bool = True
+    skin_id: str = "midnight"
 
 
 class ConfigStore:
@@ -86,10 +89,33 @@ class ConfigStore:
                 config.whisper_compute_type = "int8"
                 config.popup_width = 551
                 config.popup_height = 827
+            if source_version < 6:
+                # v1.0.11 adds Gemini without changing an existing user's
+                # selected provider. The API key remains outside this file in
+                # Windows Credential Manager.
+                config.gemini_model = "gemini-3.5-flash"
+            if source_version < 7:
+                # v1.0.15 keeps the approved 720 px horizontal four-surface
+                # popup cluster introduced by the prior UI migration.
+                config.popup_width = 720
+                config.popup_height = 366
+            if source_version < 8:
+                # v1.0.16 introduces optional popup skins. Existing users keep
+                # the exact Midnight palette unless they choose another skin.
+                config.skin_id = "midnight"
+            if source_version < 9 and config.skin_id == "azure_knight":
+                # v1.0.17 makes Azure Knight fully opaque. Reset the separate
+                # window-opacity preference once so an older saved slider value
+                # cannot keep the upgraded skin translucent.
+                config.overlay_opacity = 1.0
             config.config_version = CURRENT_CONFIG_VERSION
+            if config.answer_provider not in {"local", "gemini", "openai", "ollama"}:
+                config.answer_provider = "local"
             config.overlay_opacity = min(1.0, max(0.45, config.overlay_opacity))
-            config.popup_width = min(551, max(380, int(config.popup_width)))
-            config.popup_height = min(827, max(560, int(config.popup_height)))
+            config.popup_width = min(720, max(480, int(config.popup_width)))
+            config.popup_height = min(366, max(244, int(config.popup_height)))
+            if config.skin_id not in VALID_SKIN_IDS:
+                config.skin_id = "midnight"
             return config
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             return AppConfig()

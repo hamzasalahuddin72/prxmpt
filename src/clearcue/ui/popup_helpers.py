@@ -1,20 +1,22 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 
 from clearcue.storage.database import SessionSummary
 
 
-TOP_BAR_SIZE = (516, 46)
-AUDIO_HANDLER_SIZE = (516, 161)
-ACTIVITY_BUTTONS_SIZE = (191, 22)
-PLOT_POPUP_SIZE = (516, 393)
-HISTORY_POPUP_SIZE = (516, 390)
+TOP_BAR_SIZE = (720, 58)
+PROMPT_SCREEN_SIZE = (720, 35)
+FEEDBACK_WINDOW_SIZE = (720, 261)
+HISTORY_POPUP_SIZE = (720, 164)
+HISTORY_ROW_HEIGHT = 34
+HISTORY_ROW_GAP = 4
+HISTORY_VERTICAL_PADDING = 16
+HISTORY_MAX_VISIBLE_ROWS = 4
 
-TOP_TO_AUDIO_GAP = 8
-AUDIO_TO_ACTIVITY_GAP = 6
-ACTIVITY_TO_CONTENT_GAP = 6
+TOP_TO_PROMPT_GAP = 6
+PROMPT_TO_CONTENT_GAP = 6
 
 
 class PopupState(str, Enum):
@@ -43,12 +45,10 @@ def popup_scale_for_screen(available_width: int, available_height: int) -> float
 
     maximum_height = (
         TOP_BAR_SIZE[1]
-        + TOP_TO_AUDIO_GAP
-        + AUDIO_HANDLER_SIZE[1]
-        + AUDIO_TO_ACTIVITY_GAP
-        + ACTIVITY_BUTTONS_SIZE[1]
-        + ACTIVITY_TO_CONTENT_GAP
-        + PLOT_POPUP_SIZE[1]
+        + TOP_TO_PROMPT_GAP
+        + PROMPT_SCREEN_SIZE[1]
+        + PROMPT_TO_CONTENT_GAP
+        + FEEDBACK_WINDOW_SIZE[1]
     )
     return min(
         1.0,
@@ -62,25 +62,19 @@ def popup_cluster_positions(
     top_y: int,
     scale: float,
 ) -> dict[str, tuple[int, int]]:
-    """Calculate the shared anchors for all five independently hosted popups."""
+    """Calculate the shared anchors for the four independently hosted popups."""
 
-    top_width = round(TOP_BAR_SIZE[0] * scale)
     top_height = round(TOP_BAR_SIZE[1] * scale)
-    audio_height = round(AUDIO_HANDLER_SIZE[1] * scale)
-    activity_width = round(ACTIVITY_BUTTONS_SIZE[0] * scale)
-    activity_height = round(ACTIVITY_BUTTONS_SIZE[1] * scale)
-    top_to_audio = round(TOP_TO_AUDIO_GAP * scale)
-    audio_to_activity = round(AUDIO_TO_ACTIVITY_GAP * scale)
-    activity_to_content = round(ACTIVITY_TO_CONTENT_GAP * scale)
+    prompt_height = round(PROMPT_SCREEN_SIZE[1] * scale)
+    top_to_prompt = round(TOP_TO_PROMPT_GAP * scale)
+    prompt_to_content = round(PROMPT_TO_CONTENT_GAP * scale)
 
-    audio_y = top_y + top_height + top_to_audio
-    activity_y = audio_y + audio_height + audio_to_activity
-    content_y = activity_y + activity_height + activity_to_content
+    prompt_y = top_y + top_height + top_to_prompt
+    content_y = prompt_y + prompt_height + prompt_to_content
     return {
         "top": (top_x, top_y),
-        "audio": (top_x, audio_y),
-        "activity": (top_x + (top_width - activity_width) // 2, activity_y),
-        "plot": (top_x, content_y),
+        "prompt": (top_x, prompt_y),
+        "feedback": (top_x, content_y),
         "history": (top_x, content_y),
     }
 
@@ -93,19 +87,19 @@ def popup_cluster_size(state: PopupState, scale: float) -> tuple[int, int]:
     if state is PopupState.TOP_ONLY:
         return width, round(TOP_BAR_SIZE[1] * scale)
     if state is PopupState.PLOT:
-        height = positions["plot"][1] + round(PLOT_POPUP_SIZE[1] * scale)
+        height = positions["feedback"][1] + round(FEEDBACK_WINDOW_SIZE[1] * scale)
     elif state is PopupState.HISTORY:
         height = positions["history"][1] + round(HISTORY_POPUP_SIZE[1] * scale)
     else:
-        height = positions["activity"][1] + round(ACTIVITY_BUTTONS_SIZE[1] * scale)
+        height = positions["prompt"][1] + round(PROMPT_SCREEN_SIZE[1] * scale)
     return width, height
 
 
 def popup_size_for_screen(
     available_width: int,
     available_height: int,
-    preferred_width: int = 551,
-    preferred_height: int = 827,
+    preferred_width: int = 720,
+    preferred_height: int = 366,
 ) -> tuple[int, int]:
     """Scale the reference popup down so it remains inside the work area."""
     scale = min(
@@ -113,18 +107,36 @@ def popup_size_for_screen(
         max(0.1, (available_width - 24) / preferred_width),
         max(0.1, (available_height - 24) / preferred_height),
     )
-    return max(300, round(preferred_width * scale)), max(438, round(preferred_height * scale))
+    return max(1, round(preferred_width * scale)), max(1, round(preferred_height * scale))
 
 
 def popup_corner_radius(
     width: int,
     height: int,
-    reference_width: int = 551,
-    reference_radius: int = 58,
+    reference_width: int = 720,
+    reference_radius: int = 15,
 ) -> int:
     """Return a scaled radius that always fits the current popup height."""
     scaled = round(reference_radius * max(1, width) / reference_width)
     return max(1, min(scaled, max(1, height // 2 - 1)))
+
+
+def history_popup_height(session_count: int) -> int:
+    """Return the adaptive one-to-four-row history-popup height."""
+
+    rows = max(1, min(HISTORY_MAX_VISIBLE_ROWS, int(session_count)))
+    return (
+        HISTORY_VERTICAL_PADDING
+        + rows * HISTORY_ROW_HEIGHT
+        + (rows - 1) * HISTORY_ROW_GAP
+    )
+
+
+def history_content_height(session_count: int) -> int:
+    """Return the scroll contents height for every stored meeting row."""
+
+    rows = max(1, int(session_count))
+    return rows * HISTORY_ROW_HEIGHT + (rows - 1) * HISTORY_ROW_GAP
 
 
 def session_display_title(session: SessionSummary) -> str:
@@ -142,3 +154,51 @@ def session_display_time(started_at: str) -> str:
         return parsed.strftime("%H:%M")
     except ValueError:
         return started_at.replace("T", " ")[11:16] or "--:--"
+
+
+def session_display_datetime(started_at: str) -> str:
+    """Format a stored UTC start time using the computer's local timezone."""
+
+    try:
+        parsed = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone()
+        return f"{parsed.day} {parsed.strftime('%B %Y at %H:%M')}"
+    except ValueError:
+        return started_at.replace("T", " ")[:16] or "Unknown date"
+
+
+def session_display_duration(started_at: str, ended_at: str | None) -> str:
+    """Return an elapsed meeting duration as MM:SS or H:MM:SS."""
+
+    try:
+        started = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=UTC)
+        if ended_at:
+            ended = datetime.fromisoformat(ended_at.replace("Z", "+00:00"))
+            if ended.tzinfo is None:
+                ended = ended.replace(tzinfo=UTC)
+        else:
+            ended = datetime.now(UTC)
+        seconds = max(0, round((ended - started).total_seconds()))
+    except ValueError:
+        return "--:--"
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def session_display_model(model_used: str) -> str:
+    cleaned = model_used.strip()
+    if not cleaned:
+        return "local"
+    lowered = cleaned.lower()
+    if "gemini" in lowered:
+        if "lite" in lowered:
+            return "gem-lite"
+        if "3.5" in lowered:
+            return "gem-3.5"
+    return cleaned[:14]

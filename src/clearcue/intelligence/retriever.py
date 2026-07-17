@@ -14,6 +14,25 @@ STOP_WORDS = {
     "your",
 }
 
+INTENT_EXPANSIONS = (
+    (
+        ("tell me about yourself", "introduce yourself", "background"),
+        ("experience", "education", "skills", "projects", "career", "profile"),
+    ),
+    (
+        ("why this role", "why do you want", "why are you interested", "opportunity"),
+        ("experience", "skills", "career", "goals", "role", "responsibilities"),
+    ),
+    (
+        ("career change", "current field", "change fields", "changing careers"),
+        ("education", "experience", "career", "skills", "transferable", "goals"),
+    ),
+    (
+        ("strength", "weakness", "proud", "achievement", "challenge"),
+        ("experience", "skills", "projects", "achievement", "result"),
+    ),
+)
+
 
 def tokenize(text: str) -> list[str]:
     return [
@@ -42,6 +61,10 @@ class ContextRetriever:
         query_tokens = Counter(tokenize(query))
         if not self.chunks or not query_tokens:
             return []
+        lowered_query = query.lower()
+        for markers, expansion in INTENT_EXPANSIONS:
+            if any(marker in lowered_query for marker in markers):
+                query_tokens.update(expansion)
         total = len(self.chunks)
         scored: list[RetrievedChunk] = []
         for (title, content), chunk_tokens in zip(self.chunks, self._tokens, strict=True):
@@ -59,5 +82,42 @@ class ContextRetriever:
                 score += 3.0
             if score > 0:
                 scored.append(RetrievedChunk(title, content, score / length_normaliser))
-        return sorted(scored, key=lambda item: item.score, reverse=True)[:limit]
+        ranked = sorted(scored, key=lambda item: item.score, reverse=True)
 
+        # Broad interview questions often share few literal words with a CV.
+        # Supplement sparse lexical matches with a small, deterministic sample
+        # of the profile rather than telling the model no context exists.
+        target = min(limit, min(3, total))
+        selected = ranked[:limit]
+        selected_keys = {(item.title, item.content) for item in selected}
+        if len(selected) < target:
+            fallback = sorted(
+                self.chunks,
+                key=lambda item: self._fallback_priority(item[0], lowered_query),
+            )
+            for title, content in fallback:
+                key = (title, content)
+                if key in selected_keys:
+                    continue
+                selected.append(RetrievedChunk(title, content, 0.0))
+                selected_keys.add(key)
+                if len(selected) >= target:
+                    break
+        return selected[:limit]
+
+    @staticmethod
+    def _fallback_priority(title: str, query: str) -> tuple[int, str]:
+        lowered = title.lower()
+        wants_role = any(
+            marker in query
+            for marker in ("role", "organisation", "organization", "company", "opportunity")
+        )
+        if wants_role and any(marker in lowered for marker in ("job", "role", "description")):
+            rank = 0
+        elif any(marker in lowered for marker in ("cv", "resume", "résumé", "profile")):
+            rank = 1
+        elif any(marker in lowered for marker in ("job", "role", "description")):
+            rank = 2
+        else:
+            rank = 3
+        return rank, lowered

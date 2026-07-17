@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PrxmptPromptScreenForm</class>
+ <widget class="QWidget" name="PromptScreenRoot">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>720</width><height>35</height></rect></property>
+  <property name="minimumSize"><size><width>720</width><height>35</height></size></property>
+  <property name="maximumSize"><size><width>720</width><height>35</height></size></property>
+  <widget class="QFrame" name="PromptCard">
+   <property name="geometry"><rect><x>0</x><y>0</y><width>720</width><height>35</height></rect></property>
+   <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+   <widget class="QPushButton" name="HistoryToggleButton">
+    <property name="geometry"><rect><x>15</x><y>4</y><width>25</width><height>27</height></rect></property>
+    <property name="icon"><iconset><normaloff>history-toggle-button.png</normaloff>history-toggle-button.png</iconset></property>
+    <property name="iconSize"><size><width>21</width><height>25</height></size></property>
+   </widget>
+   <widget class="QPushButton" name="PlotToggleButton">
+    <property name="geometry"><rect><x>42</x><y>4</y><width>25</width><height>27</height></rect></property>
+    <property name="icon"><iconset><normaloff>ghost-writer-button.png</normaloff>ghost-writer-button.png</iconset></property>
+    <property name="iconSize"><size><width>25</width><height>25</height></size></property>
+   </widget>
+   <widget class="LiveTranscriptView" name="QuestionInput">
+    <property name="geometry"><rect><x>70</x><y>7</y><width>580</width><height>20</height></rect></property>
+    <property name="placeholderText"><string>Live transcript appears while listening…</string></property>
+   </widget>
+   <widget class="TypingIndicator" name="TranscriptionIndicator">
+    <property name="geometry"><rect><x>618</x><y>8</y><width>26</width><height>18</height></rect></property>
+    <property name="visible"><bool>false</bool></property>
+   </widget>
+   <widget class="QLabel" name="PopupError">
+    <property name="geometry"><rect><x>70</x><y>7</y><width>580</width><height>20</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="alignment"><set>Qt::AlignVCenter</set></property>
+    <property name="visible"><bool>false</bool></property>
+   </widget>
+   <widget class="QPushButton" name="ClearButton">
+    <property name="geometry"><rect><x>650</x><y>4</y><width>24</width><height>27</height></rect></property>
+    <property name="icon"><iconset><normaloff>clear-button.png</normaloff>clear-button.png</iconset></property>
+    <property name="iconSize"><size><width>16</width><height>25</height></size></property>
+   </widget>
+   <widget class="QPushButton" name="AnswerButton">
+    <property name="geometry"><rect><x>676</x><y>4</y><width>29</width><height>27</height></rect></property>
+    <property name="icon"><iconset><normaloff>answer-button.png</normaloff>answer-button.png</iconset></property>
+    <property name="iconSize"><size><width>25</width><height>25</height></size></property>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LiveTranscriptView</class>
+   <extends>QTextEdit</extends>
+   <header>clearcue.ui.popup_cluster</header>
+  </customwidget>
+  <customwidget>
+   <class>TypingIndicator</class>
+   <extends>QWidget</extends>
+   <header>clearcue.ui.popup_cluster</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

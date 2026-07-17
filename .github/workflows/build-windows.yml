@@ -24,8 +24,8 @@ jobs:
         run: .\scripts\build_windows.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: prxmpt-Windows-Update-1.0.10
-          path: installer/output/prxmptUpdate_1.0.10.exe
+          name: prxmpt-Windows-Update-1.0.22
+          path: installer/output/prxmptUpdate_1.0.22.exe
           if-no-files-found: error
       - name: Publish tagged GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           gh release create "${{ github.ref_name }}"
-          "installer/output/prxmptUpdate_1.0.10.exe"
+          "installer/output/prxmptUpdate_1.0.22.exe"
           --verify-tag
           --generate-notes
           --title "prxmpt ${{ github.ref_name }}"

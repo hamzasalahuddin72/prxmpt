@@ -18,6 +18,12 @@ from PySide6.QtWidgets import (
 )
 
 from clearcue.storage.database import Database
+from clearcue.ui.popup_helpers import (
+    session_display_datetime,
+    session_display_duration,
+    session_display_model,
+    session_display_title,
+)
 
 
 class HistoryDialog(QDialog):
@@ -61,8 +67,17 @@ class HistoryDialog(QDialog):
         self.sessions.clear()
         profiles = {profile.id: profile.name for profile in self.database.list_profiles()}
         for session in self.database.list_sessions():
-            date = session.started_at.replace("T", " ")[:16]
-            item = QListWidgetItem(f"{date}\n{profiles.get(session.profile_id, 'Profile')}")
+            metadata = " · ".join(
+                (
+                    session_display_datetime(session.started_at),
+                    session_display_duration(session.started_at, session.ended_at),
+                    session_display_model(session.model_used),
+                )
+            )
+            item = QListWidgetItem(
+                f"{session_display_title(session)}\n{metadata}\n"
+                f"{profiles.get(session.profile_id, 'Profile')}"
+            )
             item.setData(256, session.id)
             self.sessions.addItem(item)
         if self.sessions.count():
@@ -103,4 +118,3 @@ class HistoryDialog(QDialog):
         self.database.delete_session(self.current_session_id)
         self.current_session_id = None
         self._load()
-

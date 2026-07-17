@@ -1,0 +1,12 @@
+{
+  "id": "midnight",
+  "name": "Midnight",
+  "base": {
+    "color": "#000000",
+    "opacity": 1.0
+  },
+  "accent": {
+    "color": "#D0BCFF",
+    "opacity": 0.16
+  }
+}

@@ -37,6 +37,7 @@ class SessionSummary:
     started_at: str
     ended_at: str | None
     title: str
+    model_used: str = ""
 
 
 class Database:
@@ -87,7 +88,8 @@ class Database:
                     profile_id INTEGER NOT NULL REFERENCES profiles(id),
                     started_at TEXT NOT NULL,
                     ended_at TEXT,
-                    title TEXT NOT NULL
+                    title TEXT NOT NULL,
+                    model_used TEXT NOT NULL DEFAULT ''
                 );
 
                 CREATE TABLE IF NOT EXISTS transcript_entries (
@@ -109,6 +111,14 @@ class Database:
                 );
                 """
             )
+            session_columns = {
+                str(row[1])
+                for row in connection.execute("PRAGMA table_info(sessions)").fetchall()
+            }
+            if "model_used" not in session_columns:
+                connection.execute(
+                    "ALTER TABLE sessions ADD COLUMN model_used TEXT NOT NULL DEFAULT ''"
+                )
         self.ensure_default_profile()
 
     def ensure_default_profile(self) -> int:
@@ -218,11 +228,19 @@ class Database:
             ).fetchall()
         return [(row["title"], row["content"]) for row in rows]
 
-    def create_session(self, profile_id: int, title: str = "Practice session") -> int:
+    def create_session(
+        self,
+        profile_id: int,
+        title: str = "Practice session",
+        model_used: str = "",
+    ) -> int:
         with self._connect() as connection:
             cursor = connection.execute(
-                "INSERT INTO sessions(profile_id, started_at, title) VALUES(?, ?, ?)",
-                (profile_id, _now(), title),
+                """
+                INSERT INTO sessions(profile_id, started_at, title, model_used)
+                VALUES(?, ?, ?, ?)
+                """,
+                (profile_id, _now(), title, model_used.strip()),
             )
             return int(cursor.lastrowid)
 
@@ -253,7 +271,7 @@ class Database:
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT id, profile_id, started_at, ended_at, title
+                SELECT id, profile_id, started_at, ended_at, title, model_used
                 FROM sessions ORDER BY id DESC LIMIT ?
                 """,
                 (limit,),
@@ -265,6 +283,7 @@ class Database:
                 row["started_at"],
                 row["ended_at"],
                 row["title"],
+                row["model_used"],
             )
             for row in rows
         ]
@@ -286,6 +305,7 @@ class Database:
         question: str,
         answer: str,
         sources: Iterable[str] = (),
+        model_used: str = "",
     ) -> None:
         with self._connect() as connection:
             connection.execute(
@@ -301,6 +321,11 @@ class Database:
                     json.dumps(tuple(sources)),
                 ),
             )
+            if model_used.strip():
+                connection.execute(
+                    "UPDATE sessions SET model_used = ? WHERE id = ?",
+                    (model_used.strip(), session_id),
+                )
 
     def session_answers(self, session_id: int) -> list[dict[str, object]]:
         with self._connect() as connection:

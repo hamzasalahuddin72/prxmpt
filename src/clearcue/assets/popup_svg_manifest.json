@@ -1,7 +1,8 @@
 {
-  "prxmpt-activity-buttons.svg": "30900df61b78c25825a568a8511868464e3f6cfe566c648f53d1ab7f047e8d80",
-  "prxmpt-audio-handler.svg": "dc7243d1f91ff09c9f253b604a66840f023136bbe23d39d9e5e2f8e3e1a52e10",
-  "prxmpt-history-popup.svg": "b08462e73ab14d7b00683fe16f89de558b44bc83b10915e79fee03425e5d96a8",
-  "prxmpt-plot-popup.svg": "cdc6d07684692f1328a7bc0d11b09081106789362d834097b9618cd8b6f1e050",
-  "prxmpt-top-bar.svg": "e60f504399f044146c16647d4045c936fc8c3531e1293a309fc24c0cf7ad4bcc"
+  "prxmpt-feedback-window.svg": "b60e4b265ffe1defb68d5e73158c213565143f853d8674369ff2a029d67a7682",
+  "prxmpt-feedback-loading.svg": "cb8c379ec4db39a530cce40f54b610285a1f92d654cce3c904983cc71b026707",
+  "prxmpt-history-popup.svg": "fbf2eb9f1b0903f5997a02b5bee78dff449c58a9010081c571e030997fa56542",
+  "prxmpt-prompt-live.svg": "3fdd39891069cd733e7d81c0019bfe462dbd943ccf520c9c7c3c3fd8965474c8",
+  "prxmpt-prompt-screen.svg": "8b3e6ff6fad47a0e7ca13d0e1bc4d533cdad13c3f3ec5871eda17e8ed051eb12",
+  "prxmpt-top-bar.svg": "e0716d3af0e2bbff7b996bb6e744ab92e180d84836129e8625faeb35db3504cf"
 }

@@ -1,0 +1,12 @@
+{
+  "id": "azure_knight",
+  "name": "Azure Knight",
+  "base": {
+    "color": "#1C4345",
+    "opacity": 1.0
+  },
+  "accent": {
+    "color": "#85F7FF",
+    "opacity": 0.34
+  }
+}

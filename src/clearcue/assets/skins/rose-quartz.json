@@ -1,0 +1,12 @@
+{
+  "id": "rose_quartz",
+  "name": "Rose Quartz",
+  "base": {
+    "color": "#EAC9C2",
+    "opacity": 1.0
+  },
+  "accent": {
+    "color": "#BE818D",
+    "opacity": 1.0
+  }
+}

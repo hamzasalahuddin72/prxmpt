@@ -9,11 +9,19 @@ Produce a natural first-person answer that the user can adapt and speak.
 Grounding rules:
 - Use only facts present in the supplied context.
 - Never invent employers, dates, metrics, qualifications, technologies or achievements.
-- If the context is insufficient, explicitly say what information is missing.
 - Answer the question directly before adding detail.
 - Use STAR structure only when the question calls for a behavioural example.
 - Keep the language natural, specific and easy to say aloud.
 - Do not claim to have personally completed work unless the context supports it.
+- Treat the interview transcript as potentially noisy: follow the reconstructed question,
+  ignore duplicated phrases and preserve its important premise or trade-off.
+- Never output square-bracket placeholders, a template, coaching commentary, or phrases such
+  as "I need more information" and "I would need to know".
+- If role or organisation details are absent, use verified candidate experience plus neutral
+  wording such as "this role". Do not invent company-specific reasons.
+- For a hypothetical choice or trade-off, state a credible decision clearly, then explain the
+  criteria, commitment and communication behind it.
+- Return only the answer the candidate could actually say aloud.
 """
 
 
@@ -38,9 +46,11 @@ def build_prompt(
     else:
         context_text = "No relevant personal context was found."
     return (
-        f"QUESTION\n{question.strip()}\n\n"
+        f"RECONSTRUCTED INTERVIEW QUESTION\n{question.strip()}\n\n"
         f"ANSWER STYLE\n{style_rule}\n\n"
-        f"USER CONTEXT\n{context_text}\n\n"
-        "Return only the suggested answer."
+        f"VERIFIED CANDIDATE CONTEXT\n{context_text}\n\n"
+        "ANSWER REQUIREMENTS\n"
+        "Give a direct, confident first-person response. Use concrete facts from the context "
+        "when available. Do not mention the context, missing information, placeholders, or "
+        "how the answer should be written. Return only the spoken answer."
     )
-

@@ -14,7 +14,7 @@ where required.
 - At least 8 GB RAM; 16 GB recommended for the larger speech models
 - Headphones strongly recommended
 - Internet access for updates and optional cloud answer providers
-- Optional: OpenAI API key or a local Ollama installation
+- Optional: Gemini or OpenAI API key, or a local Ollama installation
 - Optional: VoiceMeeter for advanced routing; it is not required or bundled
 
 ## Option 1 — install and run from this source package
@@ -31,7 +31,7 @@ This is the quickest way to test the application before producing an installer.
 Future launches can use the same `INSTALL_AND_RUN.bat`. It reuses the existing
 environment rather than downloading everything again.
 
-## Option 2 — create the prxmpt 1.0.10 update installer
+## Option 2 — create the prxmpt 1.0.22 update installer
 
 The supplied build creates a self-contained Windows application. End users do
 not need Python after installing that build.
@@ -52,7 +52,7 @@ not need Python after installing that build.
    <https://jrsoftware.org/isdl.php> and run the builder again.
 6. The finished installer appears at:
 
-   `installer\output\prxmptUpdate_1.0.10.exe`
+   `installer\output\prxmptUpdate_1.0.22.exe`
 
 You can also run the build directly from PowerShell:
 
@@ -63,7 +63,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 PyInstaller must build a Windows executable on Windows. The included GitHub
 Actions workflow can perform the same build on a Windows runner and return the
-installer as a workflow artifact. Pushing a version tag such as `v1.0.10` also
+installer as a workflow artifact. Pushing a version tag such as `v1.0.22` also
 publishes the installer as a permanent GitHub Release for the in-app updater.
 
 If a previous build was interrupted and left a broken `.venv-build` folder, the
@@ -134,13 +134,19 @@ confirmation.
 
 ### 5. Choose an answer provider
 
-prxmpt offers three modes:
+prxmpt offers four modes:
 
 1. **Local grounded outline:** no API key and no context leaves the computer.
    This produces verified talking points rather than a polished AI response.
-2. **OpenAI Responses API:** enter an OpenAI API key and choose a model. The key
+2. **Google Gemini API:** create a key in Google AI Studio, select Quality
+   (`gemini-3.5-flash`) or Fast (`gemini-3.1-flash-lite`), and use **Test Gemini
+   connection**. The key is saved in Windows Credential Manager. Gemini receives
+   text questions and selected context, never microphone audio. Google currently
+   offers free-tier access subject to account, regional and changing quota limits;
+   Google states free-tier content may be used to improve its products.
+3. **OpenAI Responses API:** enter an OpenAI API key and choose a model. The key
    is saved in Windows Credential Manager, not in `settings.json`.
-3. **Ollama:** run Ollama locally, enter its address and choose an installed
+4. **Ollama:** run Ollama locally, enter its address and choose an installed
    model such as `qwen3:8b`.
 
 OpenAI API usage is billed separately from ChatGPT subscriptions.
@@ -148,16 +154,21 @@ OpenAI API usage is billed separately from ChatGPT subscriptions.
 ## Starting a practice session
 
 1. Start the Teams, Zoom or browser test call. prxmpt opens as only the compact
-   top bar; click the eye button to show the audio handler and activity buttons.
+   top bar. The microphone, meeting-audio and live controls are available
+   directly on this bar.
 2. Leave the microphone and speaker buttons enabled for both sources, or
    disable either source by clicking its button.
-3. Click the small status dot beside the audio controls. Confirm permission the
+3. Click the green live dot beside the audio controls. Confirm permission the
    first time prxmpt asks; the dot turns green while listening.
-4. Detected questions appear in the upper question field.
-5. Click **Answer** or enable the **Auto answer** switch.
+4. Click the eye button to show the prompt strip. Detected questions appear in
+   its one-line field; you can also type or edit a question there.
+5. Click the return-arrow Answer icon, or open the Ghost Writer answer surface
+   and enable **Auto answer**.
 6. The three-dot indicator appears only while speech is actively being
-   transcribed. Click the green status dot again when finished. Use the Plot and
-   History buttons to switch between the generated answer and saved meetings.
+   transcribed. Click the green live dot again when finished. The Ghost Writer
+   and History icons open their lower surfaces at the same anchor; opening one
+   automatically closes the other. History grows only as far as its populated
+   rows, up to four, and smoothly scrolls when more meetings are saved.
 7. The red X hides prxmpt in the system tray; use the tray icon to reopen or
    quit it.
 
@@ -173,9 +184,9 @@ Global shortcuts:
 - Session transcripts are local and can be disabled in Settings.
 - Saved sessions can be viewed, exported or deleted from History.
 - API keys use Windows Credential Manager.
-- Local-outline and Ollama modes can operate without sending context to OpenAI.
-- In OpenAI mode, the current question and selected context excerpts are sent to
-  the configured API.
+- Local-outline and Ollama modes keep answer context on this computer.
+- In Gemini or OpenAI mode, the current question and selected context excerpts
+  are sent to the configured provider. Audio remains local.
 - Diagnostic logs do not intentionally include transcript or answer content.
 
 ## Troubleshooting
@@ -199,15 +210,30 @@ more reliable simultaneous playback and microphone capture.
 
 The bundled model loads from disk when listening starts; it should not download.
 Keep `tiny.en` with CPU/`int8` for minimum latency. If the application reports
-that bundled `model.bin` is missing, reinstall v1.0.10 because the installer is
+that bundled `model.bin` is missing, reinstall v1.0.22 because the installer is
 incomplete or was modified. Optional `base.en` and `small.en` models still use
 the online cache and prxmpt repairs an interrupted cache once.
 
 ### CUDA or CTranslate2 error
 
 Select CPU and `int8`. GPU mode requires compatible NVIDIA libraries that are
-not bundled by the basic installer. prxmpt 1.0.10 also performs this fallback
+not bundled by the basic installer. prxmpt 1.0.22 also performs this fallback
 automatically if CUDA fails during the first inference.
+
+### Gemini answer fails
+
+- Use **Settings → Answers → Test Gemini connection**.
+- Confirm the key came from Google AI Studio and the selected model is available
+  to that project.
+- Allow `generativelanguage.googleapis.com` on HTTPS port 443 in firewall, DNS,
+  VPN and filtering software. A DNS, TLS or proxy failure now names that cause.
+- prxmpt automatically bypasses a broken configured proxy once when it is safe
+  to do so. If both proxy and direct access fail, review Windows **Network &
+  Internet → Proxy** and any VPN or antivirus HTTPS-scanning settings.
+- A quota/429 message means the current project limit was reached; wait, inspect
+  the AI Studio quota, choose Fast mode, or switch to Local.
+- Free-tier limits are controlled by Google and can change independently of a
+  prxmpt release.
 
 ### OpenAI answer fails
 
@@ -219,7 +245,7 @@ automatically if CUDA fails during the first inference.
 ### Windows SmartScreen warning
 
 Locally built applications are unsigned. For public distribution, sign both
-`prxmpt.exe` and `prxmptUpdate_1.0.10.exe` with an Authenticode code-signing
+`prxmpt.exe` and `prxmptUpdate_1.0.22.exe` with an Authenticode code-signing
 certificate. Do not advise users to bypass organisational security controls.
 
 ## Uninstalling

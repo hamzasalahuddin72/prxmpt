@@ -15,7 +15,7 @@ prxmpt deliberately does not implement screen-capture exclusion, screen-share
 evasion, DLL injection, proctoring bypass or hidden processes. Its popup is an
 ordinary visible Windows window and should be used for practice or in
 contexts where assistance and transcription are allowed. The Stealth switch in
-1.0.10 is a non-functional placeholder.
+1.0.22 is a non-functional placeholder.
 
 ## Main capabilities
 
@@ -24,19 +24,28 @@ contexts where assistance and transcription are allowed. The Stealth switch in
 - Separate microphone channel and speaker labels
 - In-memory resampling and utterance segmentation
 - Local faster-whisper transcription with bundled `tiny.en` weights
-- Interview-question detection
+- Full live transcript with provisional bold question detection
 - PDF, DOCX, TXT and Markdown context ingestion
 - Lightweight local context retrieval without a framework dependency
 - Local grounded-outline mode
+- Streaming Google Gemini provider with Quality and Fast modes
 - OpenAI Responses API provider
 - Local Ollama provider
-- Five coordinated fixed-size top-centre PySide6 popup surfaces
+- Main-popup model dropdown containing only credential-validated cloud models
+  and currently installed local models
+- Four coordinated 720 px reference-canvas PySide6 popup surfaces
+- Canonical supplied artwork with animated tactile icon controls
 - Top-bar-only startup with mutually exclusive Plot and History views
+- Three lightweight popup skins: Midnight, Azure Knight and Rose Quartz
+- Adaptive one-to-four-row History popup with eased expansion and smooth scrolling
 - Uniform whole-cluster downscaling on smaller Windows work areas
-- Five editable Qt Widgets Designer forms in `src/clearcue/assets/`
-- Exact SVG-derived PNG controls packaged as native Qt button assets
+- Four editable Qt Widgets Designer forms in `src/clearcue/assets/`
+- Exact supplied PNG controls packaged as native Qt button assets
 - Independent live microphone and meeting-audio controls
-- SQLite profiles, documents, transcripts and generated-answer history
+- Independent animated microphone and meeting-audio level lamps
+- Center-logo popup toggle with restrained hover, press and unlocked-drag feedback
+- SQLite profiles, documents, transcripts and generated-answer history with
+  date, time, duration and model metadata
 - API-key storage through Windows Credential Manager
 - PyInstaller and Inno Setup build pipeline
 - Windows GitHub Actions build workflow
@@ -59,7 +68,7 @@ SoundCard loopback + PortAudio microphone
             |
 context retrieval from SQLite
             |
- local / OpenAI / Ollama provider
+ local / Gemini / OpenAI / Ollama provider
             |
  top-centre always-on-top popup
 ```
@@ -95,7 +104,7 @@ python -m clearcue.main
 ```
 
 To edit the popup visually, run `pyside6-designer` from the same environment and
-open any of the five `prxmpt-*.ui` component forms in `src/clearcue/assets/`.
+open any of the four active `prxmpt-*.ui` forms in `src/clearcue/assets/`.
 The forms are loaded directly by the application, so saved layout changes can
 be tested by restarting the source application without rebuilding an installer. See
 [`docs/EDIT_UI_WITH_QT_DESIGNER.md`](docs/EDIT_UI_WITH_QT_DESIGNER.md).
@@ -112,9 +121,9 @@ The application can also be launched using `INSTALL_AND_RUN.bat`.
 4. Downloads and validates the distributable `tiny.en` faster-whisper snapshot.
 5. Builds an onedir PyInstaller application containing that local speech model.
 6. Compiles `installer/prxmpt.iss` with Inno Setup.
-7. Produces `installer/output/prxmptUpdate_1.0.10.exe`.
+7. Produces `installer/output/prxmptUpdate_1.0.22.exe`.
 
-Tagged builds such as `v1.0.10` are also published as permanent GitHub Releases.
+Tagged builds such as `v1.0.22` are also published as permanent GitHub Releases.
 Installed clients query the public latest-release endpoint, compare semantic
 versions, download in the background and verify GitHub's SHA-256 asset digest
 before starting a silent in-place update.
@@ -142,6 +151,24 @@ answer = response.output_text
 The model name is user-configurable so an installer does not need to be rebuilt
 when model access or preferences change.
 
+## Gemini implementation
+
+The optional Gemini provider uses Google's official `google-genai` package and
+the stateless streaming GenerateContent API. `gemini-3.5-flash` is the quality default and
+`gemini-3.1-flash-lite` is the lower-latency option. Text deltas are painted into
+the Plot popup as they arrive. Cancelling or clearing an answer invalidates the
+request so late cloud output cannot overwrite the current workspace.
+
+On a connection failure, prxmpt identifies key, quota, model, region, DNS,
+proxy, TLS, timeout and service-availability failures separately. If Windows or
+the environment has a configured proxy and the request fails before any text is
+received, it safely retries once over a direct connection. HTTP and SOCKS5 proxy
+transports are included in the packaged build.
+
+Gemini receives the detected question, answer instructions and retrieved context
+excerpts. Microphone and meeting audio remain in the local transcription path.
+The API key is stored in Windows Credential Manager, not the settings file.
+
 ## Testing
 
 The test suite covers:
@@ -159,6 +186,7 @@ The test suite covers:
 - pause-based multi-fragment question collection
 - fixed Designer geometry, compact-popup scaling and meeting-label helpers
 - release parsing, version comparison and update integrity helpers
+- Gemini streaming, proxy-bypass recovery and connection diagnostics
 
 Audio-device enumeration, live WASAPI/PortAudio capture, PyInstaller output,
 in-app update handoff and the Inno Setup installer must additionally be tested

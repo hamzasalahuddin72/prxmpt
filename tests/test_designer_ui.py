@@ -4,11 +4,10 @@ from clearcue.resources import resource_path
 
 
 FORMS = {
-    "prxmpt-top-bar.ui": ("TopBarRoot", (516, 46)),
-    "prxmpt-audio-handler.ui": ("AudioHandlerRoot", (516, 161)),
-    "prxmpt-activity-buttons.ui": ("ActivityButtonsRoot", (191, 22)),
-    "prxmpt-plot-popup.ui": ("PlotPopupRoot", (516, 393)),
-    "prxmpt-history-popup.ui": ("HistoryPopupRoot", (516, 390)),
+    "prxmpt-top-bar.ui": ("TopBarRoot", (720, 58)),
+    "prxmpt-prompt-screen.ui": ("PromptScreenRoot", (720, 35)),
+    "prxmpt-feedback-window.ui": ("FeedbackWindowRoot", (720, 261)),
+    "prxmpt-history-popup.ui": ("HistoryPopupRoot", (720, 164)),
 }
 
 
@@ -28,7 +27,7 @@ def _geometry(widget: ET.Element) -> tuple[int, int, int, int]:
     )
 
 
-def test_five_designer_forms_use_approved_fixed_geometry() -> None:
+def test_four_designer_forms_use_approved_fixed_geometry() -> None:
     for filename, (root_name, size) in FORMS.items():
         root = ET.parse(resource_path(filename)).getroot()
         root_widget = _widget(root, root_name)
@@ -49,27 +48,46 @@ def test_five_designer_forms_use_approved_fixed_geometry() -> None:
 
 def test_top_bar_matches_supplied_svg_control_coordinates() -> None:
     root = ET.parse(resource_path("prxmpt-top-bar.ui")).getroot()
-    assert _geometry(_widget(root, "PopupHeader")) == (0, 0, 516, 46)
-    assert _geometry(_widget(root, "SettingsIcon")) == (18, 11, 24, 24)
-    assert _geometry(_widget(root, "PopupBrand")) == (209, 0, 102, 46)
-    assert _geometry(_widget(root, "DragIcon")) == (388, 12, 22, 22)
-    assert _geometry(_widget(root, "PrivacyIcon")) == (434, 12, 23, 22)
-    assert _geometry(_widget(root, "PopupClose")) == (481, 15, 17, 17)
+    assert _geometry(_widget(root, "PopupHeader")) == (0, 0, 720, 58)
+    assert _geometry(_widget(root, "DragIcon")) == (16, 20, 25, 25)
+    assert _geometry(_widget(root, "MicrophoneButton")) == (87, 20, 25, 25)
+    assert _geometry(_widget(root, "MicrophoneLevelLamp")) == (110, 23, 18, 18)
+    assert _geometry(_widget(root, "SpeakerButton")) == (145, 20, 25, 25)
+    assert _geometry(_widget(root, "SpeakerLevelLamp")) == (168, 23, 18, 18)
+    assert _geometry(_widget(root, "LiveIndicator")) == (244, 26, 17, 15)
+    assert _geometry(_widget(root, "PopupBrand")) == (308, 8, 104, 56)
+    assert _geometry(_widget(root, "SettingsIcon")) == (603, 20, 25, 25)
+    assert _geometry(_widget(root, "OpacityButton")) == (640, 20, 25, 25)
+    assert _geometry(_widget(root, "PopupClose")) == (677, 20, 25, 25)
+    names = {
+        widget.attrib.get("name")
+        for widget in root.iter("widget")
+    }
+    assert "PrivacyIcon" not in names
+    assert "ProfileButton" not in names
+    assert _widget(root, "PopupBrand").attrib["class"] == "LogoToggleButton"
 
 
-def test_audio_handler_matches_supplied_svg_sections() -> None:
-    root = ET.parse(resource_path("prxmpt-audio-handler.ui")).getroot()
-    assert _geometry(_widget(root, "AudioCard")) == (0, 22, 110, 118)
-    assert _geometry(_widget(root, "QuestionCard")) == (118, 0, 398, 161)
-    assert _geometry(_widget(root, "LiveButton")) == (79, 43, 15, 15)
-    assert _geometry(_widget(root, "AnswerButton")) == (43, 129, 100, 21)
-    assert _geometry(_widget(root, "TranscriptionIndicator")) == (
-        183,
-        114,
-        45,
-        45,
-    )
-    assert _geometry(_widget(root, "ClearButton")) == (265, 129, 100, 21)
+def test_prompt_screen_matches_supplied_svg_sections() -> None:
+    root = ET.parse(resource_path("prxmpt-prompt-screen.ui")).getroot()
+    assert _geometry(_widget(root, "PromptCard")) == (0, 0, 720, 35)
+    assert _geometry(_widget(root, "HistoryToggleButton")) == (15, 4, 25, 27)
+    assert _geometry(_widget(root, "PlotToggleButton")) == (42, 4, 25, 27)
+    assert _geometry(_widget(root, "QuestionInput")) == (70, 7, 580, 20)
+    assert _geometry(_widget(root, "TranscriptionIndicator")) == (618, 8, 26, 18)
+    assert _geometry(_widget(root, "ClearButton")) == (650, 4, 24, 27)
+    assert _geometry(_widget(root, "AnswerButton")) == (676, 4, 29, 27)
+
+
+def test_feedback_window_matches_supplied_svg_sections() -> None:
+    root = ET.parse(resource_path("prxmpt-feedback-window.ui")).getroot()
+    assert _geometry(_widget(root, "AnswerView")) == (6, 7, 708, 215)
+    assert _geometry(_widget(root, "AnswerLoadingSpinner")) == (349, 104, 22, 22)
+    assert _geometry(_widget(root, "ModelBadge")) == (14, 227, 100, 25)
+    assert _geometry(_widget(root, "PreviousAnswerButton")) == (326, 228, 25, 25)
+    assert _geometry(_widget(root, "NextAnswerButton")) == (369, 228, 25, 25)
+    assert _geometry(_widget(root, "AutoAnswerSwitch")) == (607, 227, 25, 25)
+    assert _geometry(_widget(root, "StealthSwitch")) == (677, 227, 25, 25)
 
 
 def test_forms_contain_every_required_interactive_control() -> None:
@@ -79,11 +97,13 @@ def test_forms_contain_every_required_interactive_control() -> None:
         names.update(widget.attrib.get("name") for widget in root.iter("widget"))
     required = {
         "SettingsIcon",
+        "OpacityButton",
         "DragIcon",
-        "PrivacyIcon",
         "PopupClose",
         "MicrophoneButton",
+        "MicrophoneLevelLamp",
         "SpeakerButton",
+        "SpeakerLevelLamp",
         "LiveButton",
         "QuestionInput",
         "AnswerButton",
@@ -92,7 +112,10 @@ def test_forms_contain_every_required_interactive_control() -> None:
         "PlotToggleButton",
         "HistoryToggleButton",
         "AnswerView",
+        "AnswerLoadingSpinner",
         "ModelBadge",
+        "PreviousAnswerButton",
+        "NextAnswerButton",
         "AutoAnswerSwitch",
         "StealthSwitch",
         "HistoryScroll",

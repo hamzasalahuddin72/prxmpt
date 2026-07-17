@@ -12,6 +12,8 @@ Their licences remain with their respective authors. The primary packages are:
 - CTranslate2 — MIT
 - WebRTC VAD wheels — MIT/BSD-style upstream components
 - OpenAI Python SDK — Apache 2.0
+- Google Gen AI Python SDK — Apache 2.0
+- socksio — MIT
 - pypdf — BSD 3-Clause
 - python-docx — MIT
 - keyring — MIT

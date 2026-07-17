@@ -15,7 +15,8 @@ from clearcue.resources import resource_path
 from clearcue.services.global_hotkeys import GlobalHotkeys
 from clearcue.storage.database import Database
 from clearcue.ui.main_window import MainWindow
-from clearcue.ui.theme import APP_STYLESHEET
+from clearcue.ui.skins import activate_skin
+from clearcue.ui.theme import stylesheet_for_skin
 
 
 LOGGER = logging.getLogger(__name__)
@@ -72,10 +73,10 @@ def main() -> int:
     app.setOrganizationName("Hamza Salahuddin")
     app.setWindowIcon(QIcon(str(resource_path("prxmpt.ico"))))
     app.setQuitOnLastWindowClosed(False)
-    app.setStyleSheet(APP_STYLESHEET)
-
     config_store = ConfigStore()
     config = config_store.load()
+    activate_skin(config.skin_id)
+    app.setStyleSheet(stylesheet_for_skin(config.skin_id))
     database = Database()
     window = MainWindow(database, config_store, config)
     window.show()

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PrxmptFeedbackWindowForm</class>
+ <widget class="QWidget" name="FeedbackWindowRoot">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>720</width><height>261</height></rect></property>
+  <property name="minimumSize"><size><width>720</width><height>261</height></size></property>
+  <property name="maximumSize"><size><width>720</width><height>261</height></size></property>
+  <widget class="QFrame" name="FeedbackCard">
+   <property name="geometry"><rect><x>0</x><y>0</y><width>720</width><height>260</height></rect></property>
+   <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+   <widget class="QPlainTextEdit" name="AnswerView">
+    <property name="geometry"><rect><x>6</x><y>7</y><width>708</width><height>215</height></rect></property>
+    <property name="readOnly"><bool>true</bool></property>
+    <property name="placeholderText"><string>Your grounded answer will appear here.</string></property>
+   </widget>
+   <widget class="LoadingSpinner" name="AnswerLoadingSpinner">
+    <property name="geometry"><rect><x>349</x><y>104</y><width>22</width><height>22</height></rect></property>
+    <property name="visible"><bool>false</bool></property>
+   </widget>
+   <widget class="QLabel" name="PopupErrorMirror">
+    <property name="geometry"><rect><x>18</x><y>18</y><width>684</width><height>76</height></rect></property>
+    <property name="text"><string/></property>
+    <property name="wordWrap"><bool>true</bool></property>
+    <property name="visible"><bool>false</bool></property>
+   </widget>
+   <widget class="QPushButton" name="ModelBadge">
+    <property name="geometry"><rect><x>14</x><y>227</y><width>100</width><height>25</height></rect></property>
+    <property name="text"><string>local</string></property>
+   </widget>
+   <widget class="QPushButton" name="PreviousAnswerButton">
+    <property name="geometry"><rect><x>326</x><y>228</y><width>25</width><height>25</height></rect></property>
+    <property name="icon"><iconset><normaloff>answer-navigation.png</normaloff>answer-navigation.png</iconset></property>
+    <property name="iconSize"><size><width>25</width><height>25</height></size></property>
+   </widget>
+   <widget class="QPushButton" name="NextAnswerButton">
+    <property name="geometry"><rect><x>369</x><y>228</y><width>25</width><height>25</height></rect></property>
+    <property name="icon"><iconset><normaloff>answer-navigation.png</normaloff>answer-navigation.png</iconset></property>
+    <property name="iconSize"><size><width>25</width><height>25</height></size></property>
+   </widget>
+   <widget class="QLabel" name="AutoAnswerLabel">
+    <property name="geometry"><rect><x>540</x><y>233</y><width>65</width><height>12</height></rect></property>
+    <property name="text"><string>Auto answer</string></property>
+    <property name="alignment"><set>Qt::AlignCenter</set></property>
+   </widget>
+   <widget class="ToggleSwitch" name="AutoAnswerSwitch">
+    <property name="geometry"><rect><x>607</x><y>227</y><width>25</width><height>25</height></rect></property>
+   </widget>
+   <widget class="QLabel" name="StealthLabel">
+    <property name="geometry"><rect><x>637</x><y>233</y><width>38</width><height>12</height></rect></property>
+    <property name="text"><string>Stealth</string></property>
+    <property name="alignment"><set>Qt::AlignCenter</set></property>
+   </widget>
+   <widget class="ToggleSwitch" name="StealthSwitch">
+    <property name="geometry"><rect><x>677</x><y>227</y><width>25</width><height>25</height></rect></property>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LoadingSpinner</class>
+   <extends>QWidget</extends>
+   <header>clearcue.ui.popup_cluster</header>
+  </customwidget>
+  <customwidget>
+   <class>ToggleSwitch</class>
+   <extends>QCheckBox</extends>
+   <header>clearcue.ui.popup_cluster</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

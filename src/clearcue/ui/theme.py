@@ -1,19 +1,18 @@
 """prxmpt popup and supporting-dialog theme."""
 
+from clearcue.ui.skins import DEFAULT_SKIN_ID, get_skin
 
-APP_STYLESHEET = """
+
+APP_STYLESHEET_TEMPLATE = """
 QWidget {
     background: #000000;
     color: #f7f7f8;
     font-family: "Segoe UI";
     font-size: 10pt;
 }
-QWidget#TransparentRoot,
-QWidget#TransparentPanel,
 QWidget#TopBarRoot,
-QWidget#AudioHandlerRoot,
-QWidget#ActivityButtonsRoot,
-QWidget#PlotPopupRoot,
+QWidget#PromptScreenRoot,
+QWidget#FeedbackWindowRoot,
 QWidget#HistoryPopupRoot,
 QWidget#HistoryContents,
 QGraphicsView#PopupGraphicsView,
@@ -21,222 +20,189 @@ QMainWindow {
     background: transparent;
 }
 QFrame#PopupHeader {
-    background: rgba(63, 92, 114, 77);
-    border: 1px solid #000000;
-    border-radius: 23px;
-}
-QLabel#PopupBrand {
-    background: transparent;
-}
-QPushButton#SettingsIcon,
-QPushButton#HeaderIcon,
-QPushButton#DragIcon,
-QPushButton#PrivacyIcon,
-QPushButton#PopupClose {
-    padding: 0;
-    margin: 0;
     background: transparent;
     border: 0;
 }
-QPushButton#SettingsIcon:hover,
-QPushButton#DragIcon:hover,
-QPushButton#PrivacyIcon:hover,
-QPushButton#PopupClose:hover { border: 1px solid #ffffff; border-radius: 6px; }
-QPushButton#SettingsIcon[updateAvailable="true"] {
-    border: 2px solid #ffff42;
-    border-radius: 17px;
+QFrame#PromptCard,
+QFrame#FeedbackCard,
+QFrame#HistoryCard {
+    background: __POPUP_BASE__;
+    border: 0;
+    border-radius: 15px;
+}
+QLabel#LiveLabel,
+QLabel#LiveIndicator,
+QLabel#ToggleLabel,
+QLabel#MeetingTitle,
+QLabel#MeetingTime,
+QLabel#MeetingDuration,
+QLabel#MeetingModel,
+QLabel#EmptyHistory {
+    background: transparent;
 }
 
-QFrame#AudioCard {
-    background: rgba(0, 0, 0, 51);
-    border: 1px solid rgba(0, 142, 218, 170);
-    border-radius: 55px;
-}
-QFrame#QuestionCard {
-    background: rgba(230, 224, 233, 26);
-    border: 1px solid rgba(255, 255, 255, 64);
-    border-radius: 58px;
-}
-QPushButton#AudioSourceButton {
+QPushButton#SettingsIcon,
+QPushButton#DragIcon,
+LogoToggleButton#PopupBrand,
+AudioLevelLamp#MicrophoneLevelLamp,
+AudioLevelLamp#SpeakerLevelLamp,
+QPushButton#PopupClose,
+QPushButton#OpacityButton,
+QPushButton#SpeakerButton,
+QPushButton#MicrophoneButton,
+QPushButton#LiveButton,
+QPushButton#AnswerButton,
+QPushButton#ClearButton,
+QPushButton#PlotToggleButton,
+QPushButton#HistoryToggleButton,
+QPushButton#PreviousAnswerButton,
+QPushButton#NextAnswerButton,
+QPushButton#MeetingTranscript,
+QPushButton#MeetingNotes,
+QPushButton#MeetingDelete {
+    background: transparent;
+    border: 0;
     padding: 0;
     margin: 0;
-    background: transparent;
-    border: 2px solid transparent;
-    border-radius: 10px;
 }
-QPushButton#AudioSourceButton[active="true"][signal="true"] {
-    border-color: #ffffff;
+QLabel#LiveLabel {
+    color: #ffffff;
+    font-family: "Comic Sans MS";
+    font-size: 10px;
+    font-weight: 700;
 }
-QPushButton#AudioSourceButton[sourceState="retrying"] {
-    border-color: #ffcf42;
-}
-QPushButton#AudioSourceButton:hover { border-color: #ffffff; }
-QPushButton#ModelBadge {
-    background: #000000;
-    color: #f1f1f4;
-    border: 1px solid #4b3726;
-    border-radius: 14px;
-    padding: 0 8px;
-    font-size: 8.5pt;
-}
-QPushButton#ModelBadge:hover { border-color: #25cfff; }
-QPushButton#LiveButton {
-    padding: 0;
-    background: #67696d;
+QLabel#LiveLabel[running="false"] { color: #9b9b9e; }
+QLabel#LiveIndicator {
+    background: #55575c;
     border: 0;
     border-radius: 7px;
 }
-QPushButton#LiveButton[running="true"] { background: #34c759; }
-QPushButton#LiveButton[error="true"] { background: #ff453a; }
-QPushButton#LiveButton:hover { border: 1px solid #ffffff; }
+QLabel#LiveIndicator[running="true"] { background: #34c759; }
+QLabel#LiveIndicator[error="true"] { background: #ff453a; }
+QPushButton#SettingsIcon[updateAvailable="true"] {
+    background: rgba(255, 255, 66, 28);
+}
 
-QPlainTextEdit#QuestionInput {
-    background: transparent;
-    color: #f8f8f9;
-    border: 0;
-    padding: 0;
-    font-size: 12pt;
-    selection-background-color: #0a9fe8;
-}
-QPushButton#AnswerButton,
-QPushButton#ClearButton,
-QLabel#TranscriptionIndicator {
-    background: transparent;
-    border: 0;
-}
-QPushButton#SessionPill {
-    min-height: 29px;
-    max-height: 29px;
-    border: 0;
-    padding: 0 15px;
+QTextEdit#QuestionInput {
+    background: __POPUP_ACCENT__;
     color: #ffffff;
-}
-QPushButton#AnswerButton {
-    background: #069ee7;
-    border-radius: 11px;
-    font-size: 9pt;
-    padding: 0;
-}
-QPushButton#AnswerButton:hover { background: #25cfff; color: #071016; }
-QPushButton#ClearButton {
-    background: #9b9ca1;
-    border-radius: 11px;
-    font-size: 9pt;
-    padding: 0;
-}
-QPushButton#ClearButton:hover { background: #c8c9cd; color: #111111; }
-QPushButton#SessionPill {
-    min-width: 46px;
-    max-width: 64px;
-    padding: 0 8px;
-    background: #a7afbd;
-    border-radius: 15px;
-    font-weight: 800;
-    font-size: 8pt;
-}
-QPushButton#SessionPill[running="true"] {
-    background: #18c96e;
-    color: #07120b;
-}
-
-QPushButton#PlotToggleButton,
-QPushButton#HistoryToggleButton {
-    color: #ffffff;
-    border: 1px solid transparent;
-    border-radius: 11px;
-    padding: 0;
-    font-size: 9pt;
-}
-QPushButton#PlotToggleButton { background: #34c759; }
-QPushButton#HistoryToggleButton { background: #6155f5; }
-QPushButton#PlotToggleButton[selected="true"],
-QPushButton#HistoryToggleButton[selected="true"] {
-    border: 1px solid #ffffff;
-}
-QPushButton#PlotToggleButton:hover,
-QPushButton#HistoryToggleButton:hover { border: 1px solid #ffffff; }
-
-QFrame#PlotCard {
-    background: #1a1a1a;
     border: 0;
-    border-radius: 58px;
+    border-radius: 3px;
+    padding: 1px 5px 0 5px;
+    font-family: "Comic Sans MS";
+    font-size: 13px;
+    font-weight: 600;
+    selection-background-color: #0080ff;
 }
+QWidget#AnswerLoadingSpinner { background: transparent; border: 0; }
 QPlainTextEdit#AnswerView {
-    background: #202021;
-    color: #f8f8f9;
-    border: 1px solid rgba(255, 255, 255, 38);
-    border-radius: 58px;
-    padding: 17px 21px;
-    font-size: 11.5pt;
-    selection-background-color: #0a9fe8;
+    background: __POPUP_ACCENT__;
+    color: #ffffff;
+    border: 0;
+    border-radius: 15px;
+    padding: 10px 12px;
+    font-family: "Comic Sans MS";
+    font-size: 14px;
+    font-weight: 600;
+    selection-background-color: #0080ff;
 }
-QLabel#PopupError,
-QLabel#PopupErrorMirror {
-    background: #ffff00;
-    color: #000000;
-    border-radius: 8px;
-    padding: 5px 8px;
+QPushButton#ModelBadge {
+    background: transparent;
+    border: 0;
+    color: #ffffff;
+    padding: 0;
+    font-family: "Comic Sans MS";
+    font-size: 11px;
     font-weight: 700;
 }
 QLabel#ToggleLabel {
-    background: transparent;
     color: #ffffff;
-    font-size: 9.5pt;
+    font-family: "Comic Sans MS";
+    font-size: 10px;
+    font-weight: 700;
+}
+QLabel#PopupError,
+QLabel#PopupErrorMirror {
+    background: #fff400;
+    color: #000000;
+    border: 0;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: "Segoe UI";
+    font-size: 10px;
+    font-weight: 700;
 }
 
-QFrame#HistoryCard {
-    background: rgba(0, 26, 53, 51);
-    border: 0;
-    border-radius: 58px;
-}
 QScrollArea#HistoryScroll,
 QScrollArea#HistoryScroll QWidget#qt_scrollarea_viewport {
     background: transparent;
     border: 0;
 }
 QFrame#MeetingRow {
-    background: transparent;
+    background: __POPUP_ACCENT__;
     border: 0;
-    min-height: 35px;
-    max-height: 35px;
+    border-radius: 15px;
+    min-height: 34px;
+    max-height: 34px;
 }
 QLabel#MeetingTitle,
 QLabel#MeetingTime,
+QLabel#MeetingDuration,
+QLabel#MeetingModel {
+    color: #ffffff;
+    font-family: "Comic Sans MS";
+    font-size: 13px;
+    font-weight: 600;
+}
+QLabel#MeetingTime { font-weight: 700; }
+QLabel#MeetingDuration,
+QLabel#MeetingModel { font-size: 11px; }
 QLabel#EmptyHistory {
-    background: transparent;
-    color: #f4f5f7;
+    color: #a7a4ad;
+    font-family: "Comic Sans MS";
+    font-size: 13px;
 }
-QLabel#MeetingTitle { font-size: 10pt; }
-QLabel#MeetingTime { font-size: 10pt; font-weight: 600; }
-QLabel#EmptyHistory { padding: 18px; color: #9ea7ad; }
-QPushButton#MeetingTranscript,
-QPushButton#MeetingNotes,
-QPushButton#MeetingDelete {
-    padding: 0;
-    margin: 0;
+QScrollBar:vertical {
     background: transparent;
-    border: 0;
-    font-size: 14pt;
-    font-weight: 800;
+    width: 5px;
+    margin: 10px 0;
 }
-QPushButton#MeetingTranscript { color: #22dbff; }
-QPushButton#MeetingNotes { color: #8b5cff; }
-QPushButton#MeetingDelete { color: #ff5264; }
-QPushButton#MeetingTranscript:hover,
-QPushButton#MeetingNotes:hover,
-QPushButton#MeetingDelete:hover { color: #ffffff; }
+QScrollBar::handle:vertical {
+    background: __POPUP_SCROLL_ACCENT__;
+    border-radius: 2px;
+    min-height: 20px;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical { height: 0; }
 
 QMenu {
-    background: #111a1f;
+    background: #111014;
     color: #ffffff;
-    border: 1px solid #65717a;
+    border: 1px solid #6d6874;
+    border-radius: 8px;
     padding: 5px;
 }
-QMenu::item { padding: 7px 28px 7px 12px; }
-QMenu::item:selected { background: #0a9fe8; }
+QMenu::item { padding: 7px 28px 7px 12px; border-radius: 5px; }
+QMenu::item:selected { background: __POPUP_MENU_ACCENT__; }
 QMenu::item:disabled { color: #8b9398; }
+QMenu QSlider::groove:horizontal {
+    background: #4b4b52;
+    height: 6px;
+    border-radius: 3px;
+}
+QMenu QSlider::sub-page:horizontal {
+    background: #28cf72;
+    border-radius: 3px;
+}
+QMenu QSlider::handle:horizontal {
+    background: #27d4c6;
+    border: 1px solid rgba(255, 255, 255, 130);
+    width: 16px;
+    margin: -5px 0;
+    border-radius: 8px;
+}
 
-/* Supporting dialogs retain simple high-contrast controls. */
+/* Supporting dialogs intentionally remain simple, native and high contrast. */
 QDialog { background: #111315; color: #ffffff; }
 QFrame#Card { border: 1px solid #777777; }
 QLabel#Title { font-size: 18pt; font-weight: 800; }
@@ -246,17 +212,27 @@ QLabel#StatusText { color: #ffff8b; font-weight: 800; }
 QLabel#SourceOn { color: #20e47b; font-weight: 800; }
 QLabel#SourceRetry { color: #ffcf42; font-weight: 800; }
 QLabel#SourceOff { color: #9a9a9a; font-weight: 800; }
-QPushButton {
+QDialog QPushButton {
     background: #191c1f;
     color: #ffffff;
-    border: 1px solid #c5c8ca;
+    border: 0;
     border-radius: 5px;
     padding: 6px 10px;
 }
-QPushButton:hover { background: #ffffff; color: #111111; }
-QPushButton#Primary { background: #18c96e; color: #06110a; border-color: #18c96e; }
-QPushButton#Danger { background: #d94050; border-color: #d94050; }
-QLineEdit, QTextEdit, QPlainTextEdit, QTextBrowser, QComboBox, QListWidget {
+QDialog QPushButton:hover { background: #2b2f33; color: #ffffff; }
+QDialog QPushButton:pressed { background: #101214; padding-top: 7px; padding-bottom: 5px; }
+QPushButton#Primary { background: #18c96e; color: #06110a; }
+QPushButton#Primary:hover { background: #2bdc81; }
+QPushButton#Primary:pressed { background: #12ae5e; }
+QPushButton#Danger { background: #d94050; }
+QPushButton#Danger:hover { background: #ea5362; }
+QPushButton#Danger:pressed { background: #b93341; }
+QDialog QLineEdit,
+QDialog QTextEdit,
+QDialog QPlainTextEdit,
+QDialog QTextBrowser,
+QDialog QComboBox,
+QDialog QListWidget {
     background: #080a0c;
     color: #ffffff;
     border: 1px solid #aeb4b8;
@@ -273,3 +249,17 @@ QTabBar::tab { background: #101316; border: 1px solid #777777; padding: 7px 11px
 QTabBar::tab:selected { background: #0a9fe8; color: #ffffff; }
 QToolTip { background: #ffffa2; color: #000000; border: 1px solid #000000; }
 """
+
+
+def stylesheet_for_skin(skin_id: str) -> str:
+    skin = get_skin(skin_id)
+    return (
+        APP_STYLESHEET_TEMPLATE.replace("__POPUP_BASE__", skin.qss_rgba("base"))
+        .replace("__POPUP_ACCENT__", skin.qss_rgba("accent"))
+        .replace("__POPUP_SCROLL_ACCENT__", skin.qss_rgba("accent", 80 / 255))
+        .replace("__POPUP_MENU_ACCENT__", skin.qss_rgba("accent", 62 / 255))
+    )
+
+
+# Kept as a public compatibility constant for supporting tools and tests.
+APP_STYLESHEET = stylesheet_for_skin(DEFAULT_SKIN_ID)
