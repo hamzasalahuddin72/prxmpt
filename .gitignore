@@ -7,11 +7,20 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
-build/work/
-build/spec-work/
-build/lib/
-build/models/
 src/*.egg-info/
 dist/
 installer/output/
 *.log
+
+# Generated application builds
+build/
+dist/
+installer/output/
+
+# Python tooling
+.mypy_cache/
+.ruff_cache/
+
+# Temporary files
+*.tmp
+*.bak
