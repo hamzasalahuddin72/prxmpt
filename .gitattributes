@@ -1,0 +1,7 @@
+*.svg text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+# Supplied UI artwork must remain byte-exact
+src/clearcue/assets/prxmpt-*.svg binary
