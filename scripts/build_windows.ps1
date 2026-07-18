@@ -118,18 +118,38 @@ if (-not (Test-BuildEnvironment)) {
         Remove-Item -LiteralPath $BuildEnvironment -Recurse -Force
     }
 
-    $PythonSelector = Get-PythonSelector
-    if (-not $PythonSelector) {
-        Install-PythonRuntime
+    if ($env:GITHUB_ACTIONS -eq "true") {
+        $SystemPython = (Get-Command python.exe -ErrorAction Stop).Source
+
+        Write-Host "Creating GitHub Actions build environment using:"
+        Write-Host $SystemPython
+
+        Invoke-Checked -Command $SystemPython -Arguments @(
+            "-m",
+            "venv",
+            $BuildEnvironment
+        )
+    }
+    else {
         $PythonSelector = Get-PythonSelector
-    }
 
-    if (-not $PythonSelector) {
-        throw "Python was installed, but the Python Launcher has not refreshed yet. Close this window and run BUILD_INSTALLER.bat again."
-    }
+        if (-not $PythonSelector) {
+            Install-PythonRuntime
+            $PythonSelector = Get-PythonSelector
+        }
 
-    Write-Host "Creating a clean Python build environment using $PythonSelector..."
-    Invoke-Checked -Command "py.exe" -Arguments @($PythonSelector, "-m", "venv", $BuildEnvironment)
+        if (-not $PythonSelector) {
+            throw "Python 3.12 or 3.13 is unavailable. Install Python and run the builder again."
+        }
+
+        Write-Host "Creating a clean Python build environment using $PythonSelector..."
+        Invoke-Checked -Command "py.exe" -Arguments @(
+            $PythonSelector,
+            "-m",
+            "venv",
+            $BuildEnvironment
+        )
+    }
 }
 
 Write-Host "Repairing and updating packaging tools..."
