@@ -99,7 +99,7 @@ QPlainTextEdit#AnswerView {
     background: __POPUP_ACCENT__;
     color: #ffffff;
     border: 0;
-    border-radius: 15px;
+    border-radius: 10px;
     padding: 10px 12px;
     font-family: "Comic Sans MS";
     font-size: 14px;
@@ -141,7 +141,7 @@ QScrollArea#HistoryScroll QWidget#qt_scrollarea_viewport {
 QFrame#MeetingRow {
     background: __POPUP_ACCENT__;
     border: 0;
-    border-radius: 15px;
+    border-radius: 10px;
     min-height: 34px;
     max-height: 34px;
 }
