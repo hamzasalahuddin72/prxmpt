@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from PySide6.QtCore import (
     Property,
@@ -350,14 +350,14 @@ class GlassButton(QPushButton):
 
 
 class TopBarBackdrop(QFrame):
-    """Native recreation of the 720×58 SVG header and its lower green reflection."""
+    """Native recreation of the 720Ã—58 SVG header and its lower green reflection."""
 
     def paintEvent(self, event: QPaintEvent) -> None:  # noqa: ARG002
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         rect = QRectF(0.0, 8.99438, 720.0, 45.3586)
         path = QPainterPath()
-        path.addRoundedRect(rect, 22.6793, 22.6793)
+        path.addRoundedRect(rect, 10.0, 10.0)
         skin = active_skin()
         painter.fillPath(path, QColor(*skin.rgba("base")))
 
@@ -372,4 +372,5 @@ class TopBarBackdrop(QFrame):
 
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.setPen(QPen(QColor(*skin.rgba("base")), 1.0))
-        painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), 22.1793, 22.1793)
+        painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), 10.0, 10.0)
+

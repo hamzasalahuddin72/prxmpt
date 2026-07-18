@@ -1,4 +1,4 @@
-"""prxmpt popup and supporting-dialog theme."""
+﻿"""prxmpt popup and supporting-dialog theme."""
 
 from clearcue.ui.skins import DEFAULT_SKIN_ID, get_skin
 
@@ -28,7 +28,7 @@ QFrame#FeedbackCard,
 QFrame#HistoryCard {
     background: __POPUP_BASE__;
     border: 0;
-    border-radius: 15px;
+    border-radius: 10px;
 }
 QLabel#LiveLabel,
 QLabel#LiveIndicator,
@@ -263,3 +263,4 @@ def stylesheet_for_skin(skin_id: str) -> str:
 
 # Kept as a public compatibility constant for supporting tools and tests.
 APP_STYLESHEET = stylesheet_for_skin(DEFAULT_SKIN_ID)
+
