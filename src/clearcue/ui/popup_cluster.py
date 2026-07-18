@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
@@ -422,7 +422,7 @@ MaskFactory = Callable[[float], QPainterPath]
 
 
 def top_bar_mask(scale: float) -> QPainterPath:
-    path = rounded_rect_path(0, 8.99438, 720, 45.3586, 22.6793, scale)
+    path = rounded_rect_path(0, 8.99438, 720, 45.3586, 10, scale)
     # The logo's vector shadow deliberately rises above and below the capsule.
     # Union only that central area so the outer window corners stay click-through.
     logo = QPainterPath()
@@ -431,15 +431,15 @@ def top_bar_mask(scale: float) -> QPainterPath:
 
 
 def prompt_screen_mask(scale: float) -> QPainterPath:
-    return rounded_rect_path(0, 0, 720, 35, 15, scale)
+    return rounded_rect_path(0, 0, 720, 35, 10, scale)
 
 
 def feedback_window_mask(scale: float) -> QPainterPath:
-    return rounded_rect_path(0, 0, 720, 260, 15, scale)
+    return rounded_rect_path(0, 0, 720, 260, 10, scale)
 
 
 def history_popup_mask(scale: float) -> QPainterPath:
-    return rounded_rect_path(0, 0, 720, 164, 15, scale)
+    return rounded_rect_path(0, 0, 720, 164, 10, scale)
 
 
 class PopupPanel(QMainWindow):
@@ -488,7 +488,7 @@ class PopupPanel(QMainWindow):
                 0,
                 self.design_size[0],
                 self._visible_design_height,
-                15,
+                10,
                 self.scale_factor,
             )
         else:
@@ -520,3 +520,4 @@ class PopupPanel(QMainWindow):
         self._height_animation.setStartValue(self._visible_design_height)
         self._height_animation.setEndValue(target)
         self._height_animation.start()
+
