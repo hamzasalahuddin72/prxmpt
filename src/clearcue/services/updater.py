@@ -19,7 +19,7 @@ from clearcue.paths import updates_dir
 
 
 LOGGER = logging.getLogger(__name__)
-LATEST_RELEASE_URL = "https://api.github.com/repos/hamzasalahuddin72/clear-cue/releases/latest"
+LATEST_RELEASE_URL = "https://api.github.com/repos/hamzasalahuddin72/prxmpt/releases/latest"
 USER_AGENT = f"prxmpt/{__version__} Windows updater"
 GITHUB_API_VERSION = "2026-03-10"
 SHA256_PATTERN = re.compile(r"^sha256:([0-9a-fA-F]{64})$")
