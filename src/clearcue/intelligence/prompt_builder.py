@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from typing import Any
+
 from clearcue.intelligence.retriever import RetrievedChunk
 
 
@@ -37,6 +40,7 @@ def build_prompt(
     question: str,
     context: list[RetrievedChunk],
     style: str = "concise",
+    conversation_context: Sequence[Mapping[str, Any]] = (),
 ) -> str:
     style_rule = STYLE_RULES.get(style, STYLE_RULES["concise"])
     if context:
@@ -45,12 +49,35 @@ def build_prompt(
         )
     else:
         context_text = "No relevant personal context was found."
+    conversation_text = _conversation_text(conversation_context)
+    conversation_section = (
+        f"\n\nROLLING SESSION CONTEXT\n{conversation_text}"
+        if conversation_text
+        else ""
+    )
     return (
         f"RECONSTRUCTED INTERVIEW QUESTION\n{question.strip()}\n\n"
         f"ANSWER STYLE\n{style_rule}\n\n"
-        f"VERIFIED CANDIDATE CONTEXT\n{context_text}\n\n"
+        f"VERIFIED CANDIDATE CONTEXT\n{context_text}"
+        f"{conversation_section}\n\n"
         "ANSWER REQUIREMENTS\n"
         "Give a direct, confident first-person response. Use concrete facts from the context "
         "when available. Do not mention the context, missing information, placeholders, or "
         "how the answer should be written. Return only the spoken answer."
     )
+
+
+def _conversation_text(
+    conversation_context: Sequence[Mapping[str, Any]],
+) -> str:
+    entries: list[str] = []
+    for item in conversation_context:
+        question = str(item.get("resolved_question") or item.get("question") or "").strip()
+        answer = str(item.get("answer") or "").strip()
+        if not question and not answer:
+            continue
+        turn_index = str(item.get("turn_index") or "?")
+        entries.append(
+            f"TURN {turn_index}\nQUESTION: {question}\nANSWER: {answer or '(pending)'}"
+        )
+    return "\n\n".join(entries)

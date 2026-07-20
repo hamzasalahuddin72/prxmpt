@@ -353,12 +353,30 @@ class OllamaProvider:
 class LocalOutlineProvider:
     """A deterministic fallback that never sends context over the network."""
 
-    def __init__(self, question: str, context: list[RetrievedChunk]) -> None:
+    def __init__(
+        self,
+        question: str,
+        context: list[RetrievedChunk],
+        conversation_context: tuple[dict[str, Any], ...] | list[dict[str, Any]] = (),
+    ) -> None:
         self.question = question
         self.context = context
+        self.conversation_context = tuple(conversation_context)
 
     def generate(self, prompt: str) -> str:  # noqa: ARG002 - common provider API
         if not self.context:
+            if self.conversation_context:
+                previous_answer = str(
+                    self.conversation_context[-1].get("answer") or ""
+                ).strip()
+                if previous_answer:
+                    return (
+                        "Follow-up outline — use the previous answer as context, then address "
+                        "the new question directly:\n\n"
+                        f"Previous answer context:\n{previous_answer}\n\n"
+                        "Keep the response focused on the new question and add only a new "
+                        "reason, clarification or example."
+                    )
             lowered = self.question.lower()
             if any(
                 marker in lowered
@@ -397,9 +415,20 @@ class LocalOutlineProvider:
         if not selected:
             selected = [self.context[0].content[:320].strip()]
         bullets = "\n".join(f"• {sentence}" for sentence in selected)
+        follow_up_note = ""
+        if self.conversation_context:
+            previous = self.conversation_context[-1]
+            previous_question = str(
+                previous.get("resolved_question") or previous.get("question") or ""
+            ).strip()
+            if previous_question:
+                follow_up_note = (
+                    "\n\nFollow-up focus: connect this answer to the previous question — "
+                    f"{previous_question}"
+                )
         return (
             "Local grounded outline — turn these verified points into your own spoken answer:\n\n"
-            f"{bullets}\n\n"
+            f"{bullets}{follow_up_note}\n\n"
             "Suggested structure: give a direct opening, explain your strongest relevant example, "
             "then finish with the result or what you learned."
         )

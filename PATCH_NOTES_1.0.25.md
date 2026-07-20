@@ -14,11 +14,16 @@ foundation patch, not a release-version bump yet.
 - Added typed storage accessors for future follow-up, relevance, profile and
   answer-quality stages.
 - Added storage migration, ordering, session-isolation and profile tests.
+- Added a deterministic follow-up classifier for short and referential questions.
+- Added a bounded rolling context window with explicit reset boundaries.
+- Passed compact prior-turn context into answer prompt construction and local
+  outline generation.
+- Linked persisted follow-up turns to their parent turn and saved the context
+  snapshot for the active session.
 
 ## Deliberately not included yet
 
-- No provider prompt changes.
-- No relevance gate or follow-up classifier.
+- No relevance gate or answerability decision.
 - No novelty filtering or answer buffering.
 - No rich-answer UI or question header migration.
 

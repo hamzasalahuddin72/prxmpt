@@ -110,6 +110,21 @@ def test_local_answer_remains_useful_when_context_is_empty() -> None:
     assert "more personal context" not in result.answer.lower()
 
 
+def test_local_follow_up_receives_previous_turn_context() -> None:
+    result = AnswerService(AppConfig(answer_provider="local"), []).generate(
+        "Why did you choose it?",
+        conversation_context=(
+            {
+                "turn_index": 1,
+                "question": "Tell me about your Python experience",
+                "answer": "I built an invoice intelligence application.",
+            },
+        ),
+    )
+    assert "previous answer context" in result.answer.lower()
+    assert "invoice intelligence" in result.answer.lower()
+
+
 def test_local_career_change_answer_commits_to_a_decision_framework() -> None:
     result = AnswerService(AppConfig(answer_provider="local"), []).generate(
         "How would you choose this job versus a position in your current field?"

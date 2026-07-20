@@ -57,6 +57,7 @@ class SessionTurn:
     resolved_question: str
     answer: str
     follow_up_of_turn_id: int | None
+    follow_up_reason: str
     relevance_status: str
     relevance_reason: str
     context: tuple[dict[str, Any], ...] = field(default_factory=tuple)
@@ -164,6 +165,7 @@ class Database:
                     resolved_question TEXT NOT NULL DEFAULT '',
                     answer TEXT NOT NULL DEFAULT '',
                     follow_up_of_turn_id INTEGER,
+                    follow_up_reason TEXT NOT NULL DEFAULT '',
                     relevance_status TEXT NOT NULL DEFAULT 'unknown',
                     relevance_reason TEXT NOT NULL DEFAULT '',
                     context_json TEXT NOT NULL DEFAULT '[]',
@@ -209,6 +211,12 @@ class Database:
                 ("novelty_metadata_json", "TEXT NOT NULL DEFAULT '{}'"),
             ):
                 self._ensure_column(connection, "session_answers", column, definition)
+            self._ensure_column(
+                connection,
+                "session_turns",
+                "follow_up_reason",
+                "TEXT NOT NULL DEFAULT ''",
+            )
         self.ensure_default_profile()
 
     @staticmethod
@@ -501,6 +509,7 @@ class Database:
         *,
         resolved_question: str = "",
         follow_up_of_turn_id: int | None = None,
+        follow_up_reason: str = "",
         relevance_status: str = "unknown",
         relevance_reason: str = "",
         context: Iterable[Mapping[str, Any]] = (),
@@ -532,8 +541,9 @@ class Database:
                 """
                 INSERT INTO session_turns(
                     session_id, turn_index, created_at, question, resolved_question,
-                    follow_up_of_turn_id, relevance_status, relevance_reason, context_json
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    follow_up_of_turn_id, follow_up_reason, relevance_status,
+                    relevance_reason, context_json
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
@@ -542,6 +552,7 @@ class Database:
                     cleaned_question,
                     " ".join(resolved_question.split()),
                     follow_up_of_turn_id,
+                    follow_up_reason.strip(),
                     relevance_status.strip() or "unknown",
                     relevance_reason.strip(),
                     context_json,
@@ -600,7 +611,7 @@ class Database:
         query = """
             SELECT id, session_id, turn_index, created_at, question, resolved_question,
                    answer, follow_up_of_turn_id, relevance_status, relevance_reason,
-                   context_json, novelty_status, novelty_metadata_json
+                   follow_up_reason, context_json, novelty_status, novelty_metadata_json
             FROM session_turns WHERE session_id = ? ORDER BY turn_index
         """
         parameters: list[Any] = [session_id]
@@ -629,6 +640,7 @@ class Database:
                         if row["follow_up_of_turn_id"] is not None
                         else None
                     ),
+                    follow_up_reason=str(row["follow_up_reason"]),
                     relevance_status=str(row["relevance_status"]),
                     relevance_reason=str(row["relevance_reason"]),
                     context=tuple(context),
