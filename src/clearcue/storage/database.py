@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import sqlite3
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable, Mapping
 
 from clearcue.paths import database_path
 
@@ -38,6 +38,46 @@ class SessionSummary:
     ended_at: str | None
     title: str
     model_used: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class SessionTurn:
+    """The durable state for one detected question and its answer attempt.
+
+    This is intentionally separate from the existing transcript and answer
+    history tables.  Older installations can keep using those tables while
+    newer pipeline stages adopt an ordered turn contract incrementally.
+    """
+
+    id: int
+    session_id: int
+    turn_index: int
+    created_at: str
+    question: str
+    resolved_question: str
+    answer: str
+    follow_up_of_turn_id: int | None
+    relevance_status: str
+    relevance_reason: str
+    context: tuple[dict[str, Any], ...] = field(default_factory=tuple)
+    novelty_status: str = "unchecked"
+    novelty_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class InterviewerProfile:
+    """Confidence-scored interviewer signals persisted for one session."""
+
+    session_id: int
+    tone: str
+    tone_confidence: float
+    pace: str
+    pace_confidence: float
+    emotion: str
+    emotion_confidence: float
+    style: dict[str, Any]
+    sample_count: int
+    updated_at: str
 
 
 class Database:
@@ -107,19 +147,85 @@ class Database:
                     created_at TEXT NOT NULL,
                     question TEXT NOT NULL,
                     answer TEXT NOT NULL,
-                    sources_json TEXT NOT NULL DEFAULT '[]'
+                    sources_json TEXT NOT NULL DEFAULT '[]',
+                    turn_id INTEGER,
+                    relevance_status TEXT NOT NULL DEFAULT 'unknown',
+                    relevance_reason TEXT NOT NULL DEFAULT '',
+                    novelty_status TEXT NOT NULL DEFAULT 'unchecked',
+                    novelty_metadata_json TEXT NOT NULL DEFAULT '{}'
+                );
+
+                CREATE TABLE IF NOT EXISTS session_turns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+                    turn_index INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    question TEXT NOT NULL,
+                    resolved_question TEXT NOT NULL DEFAULT '',
+                    answer TEXT NOT NULL DEFAULT '',
+                    follow_up_of_turn_id INTEGER,
+                    relevance_status TEXT NOT NULL DEFAULT 'unknown',
+                    relevance_reason TEXT NOT NULL DEFAULT '',
+                    context_json TEXT NOT NULL DEFAULT '[]',
+                    novelty_status TEXT NOT NULL DEFAULT 'unchecked',
+                    novelty_metadata_json TEXT NOT NULL DEFAULT '{}',
+                    UNIQUE(session_id, turn_index)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_session_turns_session_order
+                    ON session_turns(session_id, turn_index);
+
+                CREATE TABLE IF NOT EXISTS session_context (
+                    session_id INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+                    context_json TEXT NOT NULL DEFAULT '[]',
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS session_interviewer_profiles (
+                    session_id INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+                    tone TEXT NOT NULL DEFAULT '',
+                    tone_confidence REAL NOT NULL DEFAULT 0,
+                    pace TEXT NOT NULL DEFAULT '',
+                    pace_confidence REAL NOT NULL DEFAULT 0,
+                    emotion TEXT NOT NULL DEFAULT '',
+                    emotion_confidence REAL NOT NULL DEFAULT 0,
+                    style_json TEXT NOT NULL DEFAULT '{}',
+                    sample_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
                 );
                 """
             )
-            session_columns = {
-                str(row[1])
-                for row in connection.execute("PRAGMA table_info(sessions)").fetchall()
-            }
-            if "model_used" not in session_columns:
-                connection.execute(
-                    "ALTER TABLE sessions ADD COLUMN model_used TEXT NOT NULL DEFAULT ''"
-                )
+            self._ensure_column(
+                connection,
+                "sessions",
+                "model_used",
+                "TEXT NOT NULL DEFAULT ''",
+            )
+            for column, definition in (
+                ("turn_id", "INTEGER"),
+                ("relevance_status", "TEXT NOT NULL DEFAULT 'unknown'"),
+                ("relevance_reason", "TEXT NOT NULL DEFAULT ''"),
+                ("novelty_status", "TEXT NOT NULL DEFAULT 'unchecked'"),
+                ("novelty_metadata_json", "TEXT NOT NULL DEFAULT '{}'"),
+            ):
+                self._ensure_column(connection, "session_answers", column, definition)
         self.ensure_default_profile()
+
+    @staticmethod
+    def _ensure_column(
+        connection: sqlite3.Connection,
+        table: str,
+        column: str,
+        definition: str,
+    ) -> None:
+        columns = {
+            str(row[1])
+            for row in connection.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if column not in columns:
+            connection.execute(
+                f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+            )
 
     def ensure_default_profile(self) -> int:
         with self._connect() as connection:
@@ -306,12 +412,23 @@ class Database:
         answer: str,
         sources: Iterable[str] = (),
         model_used: str = "",
+        *,
+        turn_id: int | None = None,
+        relevance_status: str = "unknown",
+        relevance_reason: str = "",
+        novelty_status: str = "unchecked",
+        novelty_metadata: Mapping[str, Any] | None = None,
     ) -> None:
+        metadata_json = json.dumps(dict(novelty_metadata or {}), sort_keys=True)
         with self._connect() as connection:
             connection.execute(
                 """
-                INSERT INTO session_answers(session_id, created_at, question, answer, sources_json)
-                VALUES(?, ?, ?, ?, ?)
+                INSERT INTO session_answers(
+                    session_id, created_at, question, answer, sources_json,
+                    turn_id, relevance_status, relevance_reason,
+                    novelty_status, novelty_metadata_json
+                )
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
@@ -319,8 +436,28 @@ class Database:
                     question.strip(),
                     answer.strip(),
                     json.dumps(tuple(sources)),
+                    turn_id,
+                    relevance_status.strip() or "unknown",
+                    relevance_reason.strip(),
+                    novelty_status.strip() or "unchecked",
+                    metadata_json,
                 ),
             )
+            if turn_id is not None:
+                connection.execute(
+                    """
+                    UPDATE session_turns
+                    SET answer = ?, novelty_status = ?, novelty_metadata_json = ?
+                    WHERE id = ? AND session_id = ?
+                    """,
+                    (
+                        answer.strip(),
+                        novelty_status.strip() or "unchecked",
+                        metadata_json,
+                        turn_id,
+                        session_id,
+                    ),
+                )
             if model_used.strip():
                 connection.execute(
                     "UPDATE sessions SET model_used = ? WHERE id = ?",
@@ -331,7 +468,9 @@ class Database:
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT created_at, question, answer, sources_json
+                SELECT created_at, question, answer, sources_json, turn_id,
+                       relevance_status, relevance_reason, novelty_status,
+                       novelty_metadata_json
                 FROM session_answers WHERE session_id = ? ORDER BY id
                 """,
                 (session_id,),
@@ -344,8 +483,331 @@ class Database:
             except (TypeError, ValueError, json.JSONDecodeError):
                 item["sources"] = ()
                 item.pop("sources_json", None)
+            try:
+                decoded_metadata = json.loads(str(item.pop("novelty_metadata_json")))
+                item["novelty_metadata"] = (
+                    decoded_metadata if isinstance(decoded_metadata, dict) else {}
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                item["novelty_metadata"] = {}
+                item.pop("novelty_metadata_json", None)
             answers.append(item)
         return answers
+
+    def create_session_turn(
+        self,
+        session_id: int,
+        question: str,
+        *,
+        resolved_question: str = "",
+        follow_up_of_turn_id: int | None = None,
+        relevance_status: str = "unknown",
+        relevance_reason: str = "",
+        context: Iterable[Mapping[str, Any]] = (),
+    ) -> int:
+        """Create the next ordered turn without changing legacy answer flow."""
+
+        cleaned_question = " ".join(question.split())
+        if not cleaned_question:
+            raise ValueError("Turn question cannot be empty.")
+        context_json = json.dumps(
+            [dict(item) for item in context],
+            sort_keys=True,
+        )
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if follow_up_of_turn_id is not None:
+                parent = connection.execute(
+                    "SELECT session_id FROM session_turns WHERE id = ?",
+                    (follow_up_of_turn_id,),
+                ).fetchone()
+                if parent is None or int(parent["session_id"]) != session_id:
+                    raise ValueError("Follow-up turn must belong to the same session.")
+            row = connection.execute(
+                "SELECT COALESCE(MAX(turn_index), 0) + 1 AS next_index "
+                "FROM session_turns WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            cursor = connection.execute(
+                """
+                INSERT INTO session_turns(
+                    session_id, turn_index, created_at, question, resolved_question,
+                    follow_up_of_turn_id, relevance_status, relevance_reason, context_json
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    int(row["next_index"]),
+                    _now(),
+                    cleaned_question,
+                    " ".join(resolved_question.split()),
+                    follow_up_of_turn_id,
+                    relevance_status.strip() or "unknown",
+                    relevance_reason.strip(),
+                    context_json,
+                ),
+            )
+            return int(cursor.lastrowid)
+
+    def update_session_turn(
+        self,
+        turn_id: int,
+        *,
+        resolved_question: str | None = None,
+        answer: str | None = None,
+        relevance_status: str | None = None,
+        relevance_reason: str | None = None,
+        context: Iterable[Mapping[str, Any]] | None = None,
+        novelty_status: str | None = None,
+        novelty_metadata: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Update only supplied turn fields, preserving compatibility with old callers."""
+
+        updates: dict[str, Any] = {}
+        if resolved_question is not None:
+            updates["resolved_question"] = " ".join(resolved_question.split())
+        if answer is not None:
+            updates["answer"] = answer.strip()
+        if relevance_status is not None:
+            updates["relevance_status"] = relevance_status.strip() or "unknown"
+        if relevance_reason is not None:
+            updates["relevance_reason"] = relevance_reason.strip()
+        if context is not None:
+            updates["context_json"] = json.dumps(
+                [dict(item) for item in context], sort_keys=True
+            )
+        if novelty_status is not None:
+            updates["novelty_status"] = novelty_status.strip() or "unchecked"
+        if novelty_metadata is not None:
+            updates["novelty_metadata_json"] = json.dumps(
+                dict(novelty_metadata), sort_keys=True
+            )
+        if not updates:
+            return
+        assignments = ", ".join(f"{column} = ?" for column in updates)
+        values = [*updates.values(), turn_id]
+        with self._connect() as connection:
+            connection.execute(
+                f"UPDATE session_turns SET {assignments} WHERE id = ?",
+                values,
+            )
+
+    def session_turns(
+        self,
+        session_id: int,
+        limit: int | None = None,
+    ) -> list[SessionTurn]:
+        query = """
+            SELECT id, session_id, turn_index, created_at, question, resolved_question,
+                   answer, follow_up_of_turn_id, relevance_status, relevance_reason,
+                   context_json, novelty_status, novelty_metadata_json
+            FROM session_turns WHERE session_id = ? ORDER BY turn_index
+        """
+        parameters: list[Any] = [session_id]
+        if limit is not None:
+            if limit < 1:
+                return []
+            query += " LIMIT ?"
+            parameters.append(limit)
+        with self._connect() as connection:
+            rows = connection.execute(query, parameters).fetchall()
+        turns: list[SessionTurn] = []
+        for row in rows:
+            context = self._decode_json_list(row["context_json"])
+            metadata = self._decode_json_object(row["novelty_metadata_json"])
+            turns.append(
+                SessionTurn(
+                    id=int(row["id"]),
+                    session_id=int(row["session_id"]),
+                    turn_index=int(row["turn_index"]),
+                    created_at=str(row["created_at"]),
+                    question=str(row["question"]),
+                    resolved_question=str(row["resolved_question"]),
+                    answer=str(row["answer"]),
+                    follow_up_of_turn_id=(
+                        int(row["follow_up_of_turn_id"])
+                        if row["follow_up_of_turn_id"] is not None
+                        else None
+                    ),
+                    relevance_status=str(row["relevance_status"]),
+                    relevance_reason=str(row["relevance_reason"]),
+                    context=tuple(context),
+                    novelty_status=str(row["novelty_status"]),
+                    novelty_metadata=metadata,
+                )
+            )
+        return turns
+
+    def save_session_context(
+        self,
+        session_id: int,
+        context: Iterable[Mapping[str, Any]],
+    ) -> None:
+        context_json = json.dumps([dict(item) for item in context], sort_keys=True)
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO session_context(session_id, context_json, updated_at)
+                VALUES(?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    context_json = excluded.context_json,
+                    updated_at = excluded.updated_at
+                """,
+                (session_id, context_json, _now()),
+            )
+
+    def session_context(self, session_id: int) -> tuple[dict[str, Any], ...]:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT context_json FROM session_context WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+        if row is None:
+            return ()
+        return tuple(self._decode_json_list(row["context_json"]))
+
+    def update_interviewer_profile(
+        self,
+        session_id: int,
+        *,
+        tone: str | None = None,
+        tone_confidence: float | None = None,
+        pace: str | None = None,
+        pace_confidence: float | None = None,
+        emotion: str | None = None,
+        emotion_confidence: float | None = None,
+        style: Mapping[str, Any] | None = None,
+        sample_count: int | None = None,
+    ) -> InterviewerProfile:
+        """Merge confidence-scored interviewer signals for the active session."""
+
+        with self._connect() as connection:
+            existing = connection.execute(
+                "SELECT * FROM session_interviewer_profiles WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            current = dict(existing) if existing else {}
+            values = {
+                "tone": tone if tone is not None else current.get("tone", ""),
+                "tone_confidence": self._confidence(
+                    tone_confidence
+                    if tone_confidence is not None
+                    else current.get("tone_confidence", 0)
+                ),
+                "pace": pace if pace is not None else current.get("pace", ""),
+                "pace_confidence": self._confidence(
+                    pace_confidence
+                    if pace_confidence is not None
+                    else current.get("pace_confidence", 0)
+                ),
+                "emotion": emotion if emotion is not None else current.get("emotion", ""),
+                "emotion_confidence": self._confidence(
+                    emotion_confidence
+                    if emotion_confidence is not None
+                    else current.get("emotion_confidence", 0)
+                ),
+                "style_json": json.dumps(
+                    dict(style)
+                    if style is not None
+                    else self._decode_json_object(current.get("style_json", "{}")),
+                    sort_keys=True,
+                ),
+                "sample_count": max(
+                    0,
+                    int(sample_count)
+                    if sample_count is not None
+                    else int(current.get("sample_count", 0)),
+                ),
+                "updated_at": _now(),
+            }
+            connection.execute(
+                """
+                INSERT INTO session_interviewer_profiles(
+                    session_id, tone, tone_confidence, pace, pace_confidence,
+                    emotion, emotion_confidence, style_json, sample_count, updated_at
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    tone = excluded.tone,
+                    tone_confidence = excluded.tone_confidence,
+                    pace = excluded.pace,
+                    pace_confidence = excluded.pace_confidence,
+                    emotion = excluded.emotion,
+                    emotion_confidence = excluded.emotion_confidence,
+                    style_json = excluded.style_json,
+                    sample_count = excluded.sample_count,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    session_id,
+                    str(values["tone"]).strip(),
+                    values["tone_confidence"],
+                    str(values["pace"]).strip(),
+                    values["pace_confidence"],
+                    str(values["emotion"]).strip(),
+                    values["emotion_confidence"],
+                    values["style_json"],
+                    values["sample_count"],
+                    values["updated_at"],
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM session_interviewer_profiles WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+        return self._interviewer_profile_from_row(row)
+
+    def interviewer_profile(self, session_id: int) -> InterviewerProfile | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM session_interviewer_profiles WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+        return self._interviewer_profile_from_row(row) if row else None
+
+    @staticmethod
+    def _confidence(value: object) -> float:
+        try:
+            return max(0.0, min(1.0, float(value)))
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _decode_json_list(value: object) -> list[dict[str, Any]]:
+        try:
+            decoded = json.loads(str(value))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+        if not isinstance(decoded, list):
+            return []
+        return [dict(item) for item in decoded if isinstance(item, Mapping)]
+
+    @staticmethod
+    def _decode_json_object(value: object) -> dict[str, Any]:
+        try:
+            decoded = json.loads(str(value))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+        return dict(decoded) if isinstance(decoded, Mapping) else {}
+
+    @classmethod
+    def _interviewer_profile_from_row(
+        cls,
+        row: sqlite3.Row | Mapping[str, Any] | None,
+    ) -> InterviewerProfile | None:
+        if row is None:
+            return None
+        return InterviewerProfile(
+            session_id=int(row["session_id"]),
+            tone=str(row["tone"]),
+            tone_confidence=cls._confidence(row["tone_confidence"]),
+            pace=str(row["pace"]),
+            pace_confidence=cls._confidence(row["pace_confidence"]),
+            emotion=str(row["emotion"]),
+            emotion_confidence=cls._confidence(row["emotion_confidence"]),
+            style=cls._decode_json_object(row["style_json"]),
+            sample_count=int(row["sample_count"]),
+            updated_at=str(row["updated_at"]),
+        )
 
     def delete_session(self, session_id: int) -> None:
         with self._connect() as connection:
