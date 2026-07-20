@@ -1,5 +1,5 @@
 #define MyAppName "prxmpt"
-#define MyAppVersion "1.0.22"
+#define MyAppVersion "1.0.24"
 #define MyAppPublisher "Hamza Salahuddin"
 #define MyAppExeName "prxmpt.exe"
 
@@ -13,7 +13,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=output
-OutputBaseFilename=prxmptUpdate_1.0.22
+OutputBaseFilename=prxmptUpdate_1.0.24
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -24,7 +24,7 @@ SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=yes
-VersionInfoVersion=1.0.22.0
+VersionInfoVersion=1.0.24.0
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -38,7 +38,7 @@ Source: "..\README_INSTALLATION.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\sample_context_template.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\PATCH_NOTES_1.0.22.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\PATCH_NOTES_1.0.24.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

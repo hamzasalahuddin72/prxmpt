@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
@@ -51,6 +51,7 @@ from clearcue.ui.glass_controls import (
     TactileIconButton,
     TopBarBackdrop,
 )
+from clearcue.ui.popup_helpers import POPUP_CORNER_RADIUS
 
 
 class ToggleSwitch(QCheckBox):
@@ -422,8 +423,10 @@ MaskFactory = Callable[[float], QPainterPath]
 
 
 def top_bar_mask(scale: float) -> QPainterPath:
-    path = rounded_rect_path(0, 8.99438, 720, 45.3586, 10, scale)
-    # The logo's vector shadow deliberately rises above and below the capsule.
+    path = rounded_rect_path(
+        0, 8.99438, 720, 45.3586, POPUP_CORNER_RADIUS, scale
+    )
+    # The logo's vector shadow deliberately rises above and below the bar.
     # Union only that central area so the outer window corners stay click-through.
     logo = QPainterPath()
     logo.addRect(QRectF(308 * scale, 8 * scale, 104 * scale, 50 * scale))
@@ -431,15 +434,15 @@ def top_bar_mask(scale: float) -> QPainterPath:
 
 
 def prompt_screen_mask(scale: float) -> QPainterPath:
-    return rounded_rect_path(0, 0, 720, 35, 10, scale)
+    return rounded_rect_path(0, 0, 720, 35, POPUP_CORNER_RADIUS, scale)
 
 
 def feedback_window_mask(scale: float) -> QPainterPath:
-    return rounded_rect_path(0, 0, 720, 260, 10, scale)
+    return rounded_rect_path(0, 0, 720, 260, POPUP_CORNER_RADIUS, scale)
 
 
 def history_popup_mask(scale: float) -> QPainterPath:
-    return rounded_rect_path(0, 0, 720, 164, 10, scale)
+    return rounded_rect_path(0, 0, 720, 164, POPUP_CORNER_RADIUS, scale)
 
 
 class PopupPanel(QMainWindow):
@@ -488,7 +491,7 @@ class PopupPanel(QMainWindow):
                 0,
                 self.design_size[0],
                 self._visible_design_height,
-                10,
+                POPUP_CORNER_RADIUS,
                 self.scale_factor,
             )
         else:
@@ -520,4 +523,3 @@ class PopupPanel(QMainWindow):
         self._height_animation.setStartValue(self._visible_design_height)
         self._height_animation.setEndValue(target)
         self._height_animation.start()
-

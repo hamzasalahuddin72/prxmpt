@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from PySide6.QtCore import (
     Property,
@@ -20,8 +20,15 @@ from PySide6.QtGui import (
     QPen,
     QRadialGradient,
 )
-from PySide6.QtWidgets import QApplication, QFrame, QPushButton, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QGraphicsOpacityEffect,
+    QPushButton,
+    QWidget,
+)
 
+from clearcue.ui.popup_helpers import POPUP_CORNER_RADIUS
 from clearcue.ui.skins import active_skin
 
 
@@ -224,12 +231,12 @@ class LogoToggleButton(TactileIconButton):
         painter.scale(scale, scale)
         if self._hover_progress > 0.01:
             painter.save()
-            painter.setOpacity(0.075 * self._hover_progress)
+            painter.setOpacity(0.11 * self._hover_progress)
             for offset in (
-                QPointF(-1.4, 0.0),
-                QPointF(1.4, 0.0),
-                QPointF(0.0, -1.4),
-                QPointF(0.0, 1.4),
+                QPointF(-1.6, 0.0),
+                QPointF(1.6, 0.0),
+                QPointF(0.0, -1.6),
+                QPointF(0.0, 1.6),
             ):
                 painter.drawPixmap(
                     target.translated(offset),
@@ -238,6 +245,44 @@ class LogoToggleButton(TactileIconButton):
                 )
             painter.restore()
         painter.drawPixmap(target, pixmap, QRectF(pixmap.rect()))
+
+
+class FocusMeetingRecord(QFrame):
+    """A meeting row that softly dims its siblings while it is hovered."""
+
+    hoverChanged = Signal(bool)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self.setMouseTracking(True)
+        self._opacity_effect = QGraphicsOpacityEffect(self)
+        self._opacity_effect.setOpacity(1.0)
+        self.setGraphicsEffect(self._opacity_effect)
+        self._opacity_animation = QPropertyAnimation(
+            self._opacity_effect,
+            b"opacity",
+            self,
+        )
+        self._opacity_animation.setDuration(120)
+        self._opacity_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+    def setDimmed(self, dimmed: bool) -> None:
+        target = 0.64 if dimmed else 1.0
+        if self._opacity_animation.endValue() == target:
+            return
+        self._opacity_animation.stop()
+        self._opacity_animation.setStartValue(self._opacity_effect.opacity())
+        self._opacity_animation.setEndValue(target)
+        self._opacity_animation.start()
+
+    def enterEvent(self, event) -> None:
+        self.hoverChanged.emit(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self.hoverChanged.emit(False)
+        super().leaveEvent(event)
 
 
 class AudioLevelLamp(QWidget):
@@ -350,14 +395,14 @@ class GlassButton(QPushButton):
 
 
 class TopBarBackdrop(QFrame):
-    """Native recreation of the 720Ã—58 SVG header and its lower green reflection."""
+    """Native recreation of the 720×58 header and its lower green reflection."""
 
     def paintEvent(self, event: QPaintEvent) -> None:  # noqa: ARG002
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         rect = QRectF(0.0, 8.99438, 720.0, 45.3586)
         path = QPainterPath()
-        path.addRoundedRect(rect, 10.0, 10.0)
+        path.addRoundedRect(rect, POPUP_CORNER_RADIUS, POPUP_CORNER_RADIUS)
         skin = active_skin()
         painter.fillPath(path, QColor(*skin.rgba("base")))
 
@@ -372,5 +417,8 @@ class TopBarBackdrop(QFrame):
 
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.setPen(QPen(QColor(*skin.rgba("base")), 1.0))
-        painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), 10.0, 10.0)
-
+        painter.drawRoundedRect(
+            rect.adjusted(0.5, 0.5, -0.5, -0.5),
+            POPUP_CORNER_RADIUS,
+            POPUP_CORNER_RADIUS,
+        )

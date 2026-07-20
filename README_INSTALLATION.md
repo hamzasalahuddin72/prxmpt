@@ -31,7 +31,7 @@ This is the quickest way to test the application before producing an installer.
 Future launches can use the same `INSTALL_AND_RUN.bat`. It reuses the existing
 environment rather than downloading everything again.
 
-## Option 2 — create the prxmpt 1.0.22 update installer
+## Option 2 — create the prxmpt 1.0.24 UI-baseline installer
 
 The supplied build creates a self-contained Windows application. End users do
 not need Python after installing that build.
@@ -52,7 +52,7 @@ not need Python after installing that build.
    <https://jrsoftware.org/isdl.php> and run the builder again.
 6. The finished installer appears at:
 
-   `installer\output\prxmptUpdate_1.0.22.exe`
+   `installer\output\prxmptUpdate_1.0.24.exe`
 
 You can also run the build directly from PowerShell:
 
@@ -63,12 +63,16 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 PyInstaller must build a Windows executable on Windows. The included GitHub
 Actions workflow can perform the same build on a Windows runner and return the
-installer as a workflow artifact. Pushing a version tag such as `v1.0.22` also
+installer as a workflow artifact. Pushing a version tag such as `v1.0.24` also
 publishes the installer as a permanent GitHub Release for the in-app updater.
 
 If a previous build was interrupted and left a broken `.venv-build` folder, the
 builder now detects and replaces that folder automatically. You do not need to
-delete it yourself.
+delete it yourself. Tests use `build\pytest-temp` rather than Windows' shared
+Temp directory, avoiding access-denied cleanup failures from stale
+`pytest-current` links. The non-essential pytest cache is disabled during the
+installer build, so a protected legacy `.pytest_cache` folder cannot interrupt
+or warn during validation.
 
 ## First-run configuration
 
@@ -160,8 +164,9 @@ OpenAI API usage is billed separately from ChatGPT subscriptions.
    disable either source by clicking its button.
 3. Click the green live dot beside the audio controls. Confirm permission the
    first time prxmpt asks; the dot turns green while listening.
-4. Click the eye button to show the prompt strip. Detected questions appear in
-   its one-line field; you can also type or edit a question there.
+4. Click the centred prxmpt logo to show or hide the prompt strip. Detected
+   questions appear in its one-line field; you can also type or edit a question
+   there.
 5. Click the return-arrow Answer icon, or open the Ghost Writer answer surface
    and enable **Auto answer**.
 6. The three-dot indicator appears only while speech is actively being
@@ -210,14 +215,14 @@ more reliable simultaneous playback and microphone capture.
 
 The bundled model loads from disk when listening starts; it should not download.
 Keep `tiny.en` with CPU/`int8` for minimum latency. If the application reports
-that bundled `model.bin` is missing, reinstall v1.0.22 because the installer is
+that bundled `model.bin` is missing, reinstall v1.0.24 because the installer is
 incomplete or was modified. Optional `base.en` and `small.en` models still use
 the online cache and prxmpt repairs an interrupted cache once.
 
 ### CUDA or CTranslate2 error
 
 Select CPU and `int8`. GPU mode requires compatible NVIDIA libraries that are
-not bundled by the basic installer. prxmpt 1.0.22 also performs this fallback
+not bundled by the basic installer. prxmpt 1.0.24 also performs this fallback
 automatically if CUDA fails during the first inference.
 
 ### Gemini answer fails
@@ -245,7 +250,7 @@ automatically if CUDA fails during the first inference.
 ### Windows SmartScreen warning
 
 Locally built applications are unsigned. For public distribution, sign both
-`prxmpt.exe` and `prxmptUpdate_1.0.22.exe` with an Authenticode code-signing
+`prxmpt.exe` and `prxmptUpdate_1.0.24.exe` with an Authenticode code-signing
 certificate. Do not advise users to bypass organisational security controls.
 
 ## Uninstalling

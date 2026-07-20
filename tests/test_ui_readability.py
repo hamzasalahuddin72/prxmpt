@@ -45,3 +45,16 @@ def test_logo_replaces_eye_toggle_and_audio_levels_drive_lamps() -> None:
     assert "class LogoToggleButton(TactileIconButton)" in controls
     assert "class AudioLevelLamp(QWidget)" in controls
     assert "48 if target >= self._display_level else 155" in controls
+
+
+def test_history_rows_focus_on_hover_and_logo_glow_is_strengthened() -> None:
+    main_window = (ROOT / "src/clearcue/ui/main_window.py").read_text(
+        encoding="utf-8"
+    )
+    controls = (ROOT / "src/clearcue/ui/glass_controls.py").read_text(
+        encoding="utf-8"
+    )
+    assert "class FocusMeetingRecord(QFrame)" in controls
+    assert "target = 0.64 if dimmed else 1.0" in controls
+    assert "self._focus_history_row" in main_window
+    assert "painter.setOpacity(0.11 * self._hover_progress)" in controls

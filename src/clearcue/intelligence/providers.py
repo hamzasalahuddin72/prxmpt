@@ -151,7 +151,7 @@ class GeminiProvider:
             from google.genai import types
         except ImportError as exc:
             raise ProviderError(
-                "Gemini support is missing from this installation. Reinstall prxmpt 1.0.22."
+                "Gemini support is missing from this installation. Reinstall prxmpt 1.0.24."
             ) from exc
         try:
             client_args = {} if trust_env else {"trust_env": False}

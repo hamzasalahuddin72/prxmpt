@@ -31,9 +31,9 @@ def test_popup_scales_down_inside_small_work_area() -> None:
 
 
 def test_popup_corner_radius_is_clamped_when_collapsed() -> None:
-    assert popup_corner_radius(720, 366) == 15
-    assert popup_corner_radius(720, 58) == 15
-    assert popup_corner_radius(406, 206) == 8
+    assert popup_corner_radius(720, 366) == 10
+    assert popup_corner_radius(720, 58) == 10
+    assert popup_corner_radius(406, 206) == 6
 
 
 def test_four_popup_cluster_uses_fixed_approved_anchors() -> None:
