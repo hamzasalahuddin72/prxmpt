@@ -4,6 +4,7 @@ Set-StrictMode -Version Latest
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $BuildEnvironment = Join-Path $ProjectRoot ".venv-build"
 $Python = Join-Path $BuildEnvironment "Scripts\python.exe"
+$PytestTemp = Join-Path $ProjectRoot "build\pytest-temp"
 Set-Location $ProjectRoot
 
 function Invoke-Checked {
@@ -108,7 +109,7 @@ function Find-InnoCompiler {
     return $null
 }
 
-Write-Host "prxmpt 1.0.22 Windows update builder" -ForegroundColor Cyan
+Write-Host "prxmpt 1.0.24 UI baseline builder" -ForegroundColor Cyan
 Write-Host "Project: $ProjectRoot"
 Write-Host ""
 
@@ -118,38 +119,18 @@ if (-not (Test-BuildEnvironment)) {
         Remove-Item -LiteralPath $BuildEnvironment -Recurse -Force
     }
 
-    if ($env:GITHUB_ACTIONS -eq "true") {
-        $SystemPython = (Get-Command python.exe -ErrorAction Stop).Source
-
-        Write-Host "Creating GitHub Actions build environment using:"
-        Write-Host $SystemPython
-
-        Invoke-Checked -Command $SystemPython -Arguments @(
-            "-m",
-            "venv",
-            $BuildEnvironment
-        )
-    }
-    else {
+    $PythonSelector = Get-PythonSelector
+    if (-not $PythonSelector) {
+        Install-PythonRuntime
         $PythonSelector = Get-PythonSelector
-
-        if (-not $PythonSelector) {
-            Install-PythonRuntime
-            $PythonSelector = Get-PythonSelector
-        }
-
-        if (-not $PythonSelector) {
-            throw "Python 3.12 or 3.13 is unavailable. Install Python and run the builder again."
-        }
-
-        Write-Host "Creating a clean Python build environment using $PythonSelector..."
-        Invoke-Checked -Command "py.exe" -Arguments @(
-            $PythonSelector,
-            "-m",
-            "venv",
-            $BuildEnvironment
-        )
     }
+
+    if (-not $PythonSelector) {
+        throw "Python was installed, but the Python Launcher has not refreshed yet. Close this window and run BUILD_INSTALLER.bat again."
+    }
+
+    Write-Host "Creating a clean Python build environment using $PythonSelector..."
+    Invoke-Checked -Command "py.exe" -Arguments @($PythonSelector, "-m", "venv", $BuildEnvironment)
 }
 
 Write-Host "Repairing and updating packaging tools..."
@@ -160,7 +141,14 @@ Write-Host "Installing prxmpt build dependencies..."
 Invoke-Checked -Command $Python -Arguments @("-m", "pip", "install", "-e", ".[dev]")
 
 Write-Host "Running automated tests..."
-Invoke-Checked -Command $Python -Arguments @("-m", "pytest")
+if (Test-Path $PytestTemp) {
+    Remove-Item -LiteralPath $PytestTemp -Recurse -Force
+}
+New-Item -ItemType Directory -Path $PytestTemp -Force | Out-Null
+Invoke-Checked -Command $Python -Arguments @(
+    "-m", "pytest", "--basetemp", $PytestTemp,
+    "-p", "no:cacheprovider"
+)
 
 Write-Host "Preparing the bundled tiny.en speech model..."
 Invoke-Checked -Command $Python -Arguments @(
@@ -189,12 +177,12 @@ if (-not $InnoCompiler) {
     throw "Inno Setup was installed but ISCC.exe could not be located. Restart Windows, then run BUILD_INSTALLER.bat again."
 }
 
-Write-Host "Creating prxmptUpdate_1.0.22.exe..."
+Write-Host "Creating prxmptUpdate_1.0.24.exe..."
 Invoke-Checked -Command $InnoCompiler -Arguments @("installer\prxmpt.iss")
 
-$Installer = Join-Path $ProjectRoot "installer\output\prxmptUpdate_1.0.22.exe"
+$Installer = Join-Path $ProjectRoot "installer\output\prxmptUpdate_1.0.24.exe"
 if (-not (Test-Path $Installer)) {
-    throw "The installer compiler finished but prxmptUpdate_1.0.22.exe was not created."
+    throw "The installer compiler finished but prxmptUpdate_1.0.24.exe was not created."
 }
 
 Write-Host ""

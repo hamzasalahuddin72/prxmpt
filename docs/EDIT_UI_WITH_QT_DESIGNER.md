@@ -1,7 +1,10 @@
 # Editing the prxmpt popup components with Qt Widgets Designer
 
-prxmpt 1.0.22 uses four independent Designer forms in
+prxmpt 1.0.24 uses four independent Designer forms in
 `src\clearcue\assets`:
+
+Read `docs\UI_BASELINE.md` before changing a form. It is the authoritative
+geometry and interaction contract for continued UI development.
 
 | Form | Logical size | Purpose |
 |---|---:|---|

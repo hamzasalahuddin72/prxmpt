@@ -9,13 +9,17 @@ history.
 See [README_INSTALLATION.md](README_INSTALLATION.md) for the complete Windows
 installation, first-run and troubleshooting guide.
 
+The authoritative interface contract for continued development is
+[`docs/UI_BASELINE.md`](docs/UI_BASELINE.md). Historical patch notes describe
+earlier releases but do not override that baseline.
+
 ## Product boundaries
 
 prxmpt deliberately does not implement screen-capture exclusion, screen-share
 evasion, DLL injection, proctoring bypass or hidden processes. Its popup is an
 ordinary visible Windows window and should be used for practice or in
 contexts where assistance and transcription are allowed. The Stealth switch in
-1.0.22 is a non-functional placeholder.
+1.0.24 is a non-functional placeholder.
 
 ## Main capabilities
 
@@ -37,13 +41,15 @@ contexts where assistance and transcription are allowed. The Stealth switch in
 - Canonical supplied artwork with animated tactile icon controls
 - Top-bar-only startup with mutually exclusive Plot and History views
 - Three lightweight popup skins: Midnight, Azure Knight and Rose Quartz
-- Adaptive one-to-four-row History popup with eased expansion and smooth scrolling
+- Adaptive one-to-four-row History popup with eased expansion, smooth scrolling
+  and sibling-dimming hover focus
 - Uniform whole-cluster downscaling on smaller Windows work areas
 - Four editable Qt Widgets Designer forms in `src/clearcue/assets/`
 - Exact supplied PNG controls packaged as native Qt button assets
 - Independent live microphone and meeting-audio controls
 - Independent animated microphone and meeting-audio level lamps
-- Center-logo popup toggle with restrained hover, press and unlocked-drag feedback
+- Center-logo popup toggle with a clearer hover glow, restrained press and
+  unlocked-drag feedback
 - SQLite profiles, documents, transcripts and generated-answer history with
   date, time, duration and model metadata
 - API-key storage through Windows Credential Manager
@@ -121,9 +127,9 @@ The application can also be launched using `INSTALL_AND_RUN.bat`.
 4. Downloads and validates the distributable `tiny.en` faster-whisper snapshot.
 5. Builds an onedir PyInstaller application containing that local speech model.
 6. Compiles `installer/prxmpt.iss` with Inno Setup.
-7. Produces `installer/output/prxmptUpdate_1.0.22.exe`.
+7. Produces `installer/output/prxmptUpdate_1.0.24.exe`.
 
-Tagged builds such as `v1.0.22` are also published as permanent GitHub Releases.
+Tagged builds such as `v1.0.24` are also published as permanent GitHub Releases.
 Installed clients query the public latest-release endpoint, compare semantic
 versions, download in the background and verify GitHub's SHA-256 asset digest
 before starting a silent in-place update.
@@ -185,6 +191,9 @@ The test suite covers:
 - bundled-model discovery and transcription activity reporting
 - pause-based multi-fragment question collection
 - fixed Designer geometry, compact-popup scaling and meeting-label helpers
+- authoritative UI-baseline geometry and removed-control guards
+- history-record sibling-dimming focus and strengthened logo-glow constants
+- project-local Windows pytest temporary-directory configuration
 - release parsing, version comparison and update integrity helpers
 - Gemini streaming, proxy-bypass recovery and connection diagnostics
 

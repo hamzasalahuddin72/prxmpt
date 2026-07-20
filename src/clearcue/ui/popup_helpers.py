@@ -17,6 +17,7 @@ HISTORY_MAX_VISIBLE_ROWS = 4
 
 TOP_TO_PROMPT_GAP = 6
 PROMPT_TO_CONTENT_GAP = 6
+POPUP_CORNER_RADIUS = 10
 
 
 class PopupState(str, Enum):
@@ -114,7 +115,7 @@ def popup_corner_radius(
     width: int,
     height: int,
     reference_width: int = 720,
-    reference_radius: int = 15,
+    reference_radius: int = POPUP_CORNER_RADIUS,
 ) -> int:
     """Return a scaled radius that always fits the current popup height."""
     scaled = round(reference_radius * max(1, width) / reference_width)

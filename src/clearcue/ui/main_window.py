@@ -50,6 +50,7 @@ from clearcue.ui.context_dialog import ContextDialog
 from clearcue.ui.history_dialog import HistoryDialog
 from clearcue.ui.glass_controls import (
     AudioLevelLamp,
+    FocusMeetingRecord,
     LogoToggleButton,
     TactileIconButton,
 )
@@ -145,6 +146,8 @@ class MainWindow(QMainWindow):
         self._model_catalog = ModelCatalog(())
         self._model_catalog_loading = False
         self._model_catalog_request = 0
+        self._history_rows: list[FocusMeetingRecord] = []
+        self._hovered_history_row: FocusMeetingRecord | None = None
         self._model_catalog_executor = ThreadPoolExecutor(
             max_workers=1,
             thread_name_prefix="prxmpt-model-catalog",
@@ -1073,6 +1076,8 @@ class MainWindow(QMainWindow):
         self._refresh_history()
 
     def _refresh_history(self) -> None:
+        self._history_rows.clear()
+        self._hovered_history_row = None
         while self.history_layout.count():
             item = self.history_layout.takeAt(0)
             widget = item.widget()
@@ -1095,10 +1100,12 @@ class MainWindow(QMainWindow):
             return
 
         for index, session in enumerate(sessions):
-            row = QFrame()
+            row = FocusMeetingRecord()
             row.setObjectName("MeetingRow")
             row.setProperty("last", index == len(sessions) - 1)
             row.setFixedHeight(34)
+            row.hoverChanged.connect(partial(self._focus_history_row, row))
+            self._history_rows.append(row)
             layout = QHBoxLayout(row)
             layout.setContentsMargins(12, 0, 9, 0)
             layout.setSpacing(0)
@@ -1156,6 +1163,22 @@ class MainWindow(QMainWindow):
             layout.addWidget(delete)
             self.history_layout.addWidget(row)
         self.history_layout.addStretch()
+
+    def _focus_history_row(
+        self,
+        hovered_row: FocusMeetingRecord,
+        hovered: bool,
+    ) -> None:
+        if hovered:
+            self._hovered_history_row = hovered_row
+            for row in self._history_rows:
+                row.setDimmed(row is not hovered_row)
+            return
+        if self._hovered_history_row is not hovered_row:
+            return
+        self._hovered_history_row = None
+        for row in self._history_rows:
+            row.setDimmed(False)
 
     def _view_session_content(self, session_id: int, mode: str) -> None:
         SessionContentDialog(self.database, session_id, mode, self).exec()

@@ -10,14 +10,14 @@ def _release_payload() -> dict:
         "tag_name": "v1.0.6",
         "name": "ClearCue v1.0.6",
         "body": "Reliability update",
-        "html_url": "https://github.com/hamzasalahuddin72/hamzasalahuddin72/prxmpt/releases/tag/v1.0.6",
+        "html_url": "https://github.com/hamzasalahuddin72/clear-cue/releases/tag/v1.0.6",
         "draft": False,
         "prerelease": False,
         "assets": [
             {
                 "name": "ClearCueUpdate_1.0.6.exe",
                 "browser_download_url": (
-                    "https://github.com/hamzasalahuddin72/hamzasalahuddin72/prxmpt/releases/download/"
+                    "https://github.com/hamzasalahuddin72/clear-cue/releases/download/"
                     "v1.0.6/ClearCueUpdate_1.0.6.exe"
                 ),
                 "size": 1234,
@@ -41,7 +41,7 @@ def test_release_parser_prefers_new_prxmpt_installer_name() -> None:
         {
             "name": "prxmptUpdate_1.0.6.exe",
             "browser_download_url": (
-                "https://github.com/hamzasalahuddin72/hamzasalahuddin72/prxmpt/releases/download/"
+                "https://github.com/hamzasalahuddin72/clear-cue/releases/download/"
                 "v1.0.6/prxmptUpdate_1.0.6.exe"
             ),
             "size": 4321,
