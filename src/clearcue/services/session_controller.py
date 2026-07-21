@@ -13,6 +13,7 @@ from clearcue.intelligence.question_detector import (
     potential_question_candidate,
     question_fragment,
 )
+from clearcue.intelligence.turn_context import TurnContextWindow, TurnResolution
 from clearcue.storage.database import Database
 
 
@@ -35,6 +36,7 @@ class SessionController(QObject):
     answer_started = Signal(str)
     answer_delta = Signal(str, str)
     answer_failed = Signal(str)
+    clarification_needed = Signal(str, str)
     status_changed = Signal(str)
     level_changed = Signal(str, float)
     source_state_changed = Signal(str, bool, str)
@@ -70,6 +72,12 @@ class SessionController(QObject):
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="clearcue-ai")
         self._question_parts: list[str] = []
         self._live_transcript_parts: list[tuple[str, bool]] = []
+        self._turn_context = TurnContextWindow()
+        self._pending_conversation_context: tuple[dict[str, object], ...] = ()
+        self._prepared_turn_question = ""
+        self._active_turn_id: int | None = None
+        self._active_turn_question = ""
+        self._active_turn_resolution: TurnResolution | None = None
         self._answer_request_id = 0
         self._question_timer = QTimer(self)
         self._question_timer.setSingleShot(True)
@@ -122,6 +130,12 @@ class SessionController(QObject):
             )
         else:
             self.session_id = None
+        self._turn_context.reset()
+        self._pending_conversation_context = ()
+        self._prepared_turn_question = ""
+        self._active_turn_id = None
+        self._active_turn_question = ""
+        self._active_turn_resolution = None
         self._question_parts.clear()
         self._live_transcript_parts.clear()
         self._question_timer.stop()
@@ -152,6 +166,12 @@ class SessionController(QObject):
         if self.session_id is not None:
             self.database.finish_session(self.session_id)
         self.session_id = None
+        self._turn_context.reset()
+        self._pending_conversation_context = ()
+        self._prepared_turn_question = ""
+        self._active_turn_id = None
+        self._active_turn_question = ""
+        self._active_turn_resolution = None
         self.level_changed.emit("Interviewer", 0.0)
         self.level_changed.emit("You", 0.0)
         self.session_state_changed.emit(False)
@@ -162,23 +182,42 @@ class SessionController(QObject):
         if not cleaned:
             self.error_raised.emit("Enter or detect a question first.")
             return
+        prepared_turn = self._prepared_turn_question == cleaned
+        if prepared_turn:
+            conversation_context = self._pending_conversation_context
+            resolution = self._active_turn_resolution
+        else:
+            resolution, _turn_id = self._register_turn(cleaned)
+            conversation_context = resolution.context
+        if resolution is None:
+            resolution, _turn_id = self._register_turn(cleaned)
+            conversation_context = resolution.context
+        self._pending_conversation_context = ()
+        self._prepared_turn_question = ""
+        if not resolution.is_answerable:
+            self._publish_clarification(resolution)
+            return
+        resolved_question = resolution.resolved_question
+        if not conversation_context:
+            conversation_context = self._turn_context.context_payload()
         self.status_changed.emit("Building a grounded answer…")
         self._answer_request_id += 1
         request_id = self._answer_request_id
-        self.answer_started.emit(cleaned)
+        self.answer_started.emit(resolved_question)
         config = replace(self.config)
         answer_model = configured_answer_model(config)
         chunks = self.database.context_chunks(self.profile_id)
 
         def task() -> tuple[str, str, tuple[str, ...]]:
             result = AnswerService(config, chunks).generate_stream(
-                cleaned,
+                resolved_question,
                 style,
                 lambda delta: self._incoming_answer_delta.emit(
                     request_id,
-                    cleaned,
+                    resolved_question,
                     delta,
                 ),
+                conversation_context=conversation_context,
             )
             return result.question, result.answer, result.sources
 
@@ -280,9 +319,66 @@ class SessionController(QObject):
                 question is not None,
             )
         if question:
-            self.question_ready.emit(question)
-            if auto_generate and self.config.auto_generate:
-                self.ask(question)
+            resolution, _turn_id = self._register_turn(question)
+            self._pending_conversation_context = resolution.context
+            self._prepared_turn_question = resolution.resolved_question
+            self.question_ready.emit(resolution.resolved_question)
+            if not resolution.is_answerable:
+                self._pending_conversation_context = ()
+                self._prepared_turn_question = ""
+                self._publish_clarification(resolution)
+            elif auto_generate and self.config.auto_generate:
+                self.ask(resolution.resolved_question)
+
+    def _register_turn(self, question: str) -> tuple[TurnResolution, int | None]:
+        resolution = self._turn_context.resolve(question)
+        parent_turn_id = None
+        if resolution.parent_turn_index is not None:
+            parent_turn = next(
+                (
+                    turn
+                    for turn in reversed(self._turn_context.turns)
+                    if turn.turn_index == resolution.parent_turn_index
+                ),
+                None,
+            )
+            parent_turn_id = parent_turn.turn_id if parent_turn else None
+        turn_id = None
+        if self.session_id is not None:
+            turn_id = self.database.create_session_turn(
+                self.session_id,
+                question,
+                resolved_question=resolution.resolved_question,
+                follow_up_of_turn_id=parent_turn_id,
+                follow_up_reason=resolution.reason,
+                relevance_status=resolution.status,
+                relevance_reason=resolution.reason,
+                gate_metadata=resolution.metadata,
+                context=resolution.context,
+            )
+        self._turn_context.add_turn(
+            question,
+            resolved_question=resolution.resolved_question,
+            turn_id=turn_id,
+            topic_lock_turn_index=resolution.topic_lock_turn_index,
+        )
+        self._active_turn_id = turn_id
+        self._active_turn_question = resolution.resolved_question
+        self._active_turn_resolution = resolution
+        if self.session_id is not None:
+            self.database.save_session_context(
+                self.session_id,
+                self._turn_context.context_payload(),
+            )
+        return resolution, turn_id
+
+    def _publish_clarification(self, resolution: TurnResolution) -> None:
+        message = resolution.clarification_message or (
+            "I caught part of that, but the question is unclear. "
+            "Could you repeat or rephrase it?"
+        )
+        self.status_changed.emit("Clarification needed")
+        self.clarification_needed.emit(resolution.resolved_question, message)
 
     @staticmethod
     def _question_display_parts(
@@ -350,6 +446,8 @@ class SessionController(QObject):
         if request_id != self._answer_request_id:
             return
         source_tuple = tuple(str(source) for source in (sources or ()))
+        completed_turn = self._turn_context.complete_turn(question, answer)
+        turn_id = completed_turn.turn_id if completed_turn else None
         if self.session_id is not None:
             self.database.add_session_answer(
                 self.session_id,
@@ -357,6 +455,23 @@ class SessionController(QObject):
                 answer,
                 source_tuple,
                 model_used,
+                turn_id=turn_id,
+                relevance_status=(
+                    self._active_turn_resolution.status
+                    if self._active_turn_resolution
+                    else "unknown"
+                ),
+                relevance_reason=(
+                    self._active_turn_resolution.reason
+                    if self._active_turn_resolution
+                    else ""
+                ),
+            )
+            if turn_id is not None:
+                self.database.update_session_turn(turn_id, answer=answer)
+            self.database.save_session_context(
+                self.session_id,
+                self._turn_context.context_payload(),
             )
         self.answer_ready.emit(question, answer, source_tuple)
         self.status_changed.emit("Answer ready")

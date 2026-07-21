@@ -16,3 +16,5 @@ src/*.egg-info/
 dist/
 installer/output/
 *.log
+
+build/prxmpt/
