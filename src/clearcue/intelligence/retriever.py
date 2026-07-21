@@ -57,7 +57,13 @@ class ContextRetriever:
         for tokens in self._tokens:
             self._document_frequency.update(tokens.keys())
 
-    def retrieve(self, query: str, limit: int = 5) -> list[RetrievedChunk]:
+    def retrieve(
+        self,
+        query: str,
+        limit: int = 5,
+        *,
+        allow_fallback: bool = True,
+    ) -> list[RetrievedChunk]:
         query_tokens = Counter(tokenize(query))
         if not self.chunks or not query_tokens:
             return []
@@ -87,6 +93,8 @@ class ContextRetriever:
         # Broad interview questions often share few literal words with a CV.
         # Supplement sparse lexical matches with a small, deterministic sample
         # of the profile rather than telling the model no context exists.
+        if not allow_fallback:
+            return ranked[:limit]
         target = min(limit, min(3, total))
         selected = ranked[:limit]
         selected_keys = {(item.title, item.content) for item in selected}

@@ -454,6 +454,7 @@ class MainWindow(QMainWindow):
         self.controller.answer_started.connect(self._show_answer_started)
         self.controller.answer_delta.connect(self._show_answer_delta)
         self.controller.answer_failed.connect(self._show_answer_failed)
+        self.controller.clarification_needed.connect(self._show_clarification)
         self.controller.status_changed.connect(self._show_status)
         self.controller.level_changed.connect(self._show_level)
         self.controller.source_state_changed.connect(self._show_source_state)
@@ -1026,6 +1027,22 @@ class MainWindow(QMainWindow):
         self.answer_loading_spinner.hide()
         self._answer_cursor = len(self._answer_snapshots) - 1
         self._refresh_answer_navigation()
+
+    def _show_clarification(self, question: str, message: str) -> None:
+        """Present a gate decision without pretending it is a generated answer."""
+
+        self._current_question = question
+        self._generation_active = False
+        self._generation_question = ""
+        self._generation_text = ""
+        self.answer_loading_spinner.hide()
+        self.answer_view.setPlainText(f"Clarification needed\n\n{message}")
+        self.answer_view.setToolTip("No answer provider was called for this transcript.")
+        self._answer_cursor = len(self._answer_snapshots) - 1
+        self._refresh_answer_navigation()
+        self.error_banner.hide()
+        self.error_mirror.hide()
+        self._apply_popup_state(PopupState.PLOT)
 
     def _show_source_state(self, kind: str, available: bool, message: str) -> None:
         button = (

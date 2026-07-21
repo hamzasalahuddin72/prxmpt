@@ -95,6 +95,42 @@ def test_prompt_contains_grounding_and_question() -> None:
     assert "Do not mention the context, missing information, placeholders" in prompt
 
 
+def test_topic_lock_retrieves_only_the_active_project_context() -> None:
+    chunks = [
+        (
+            "Sneaker project",
+            "Built a sneaker market website in a six-person Agile team using PHP, "
+            "JavaScript, RapidAPI and Git.",
+        ),
+        (
+            "Rizka Travel",
+            "Maintained MySQL client, booking and payment records for a travel agency.",
+        ),
+    ]
+    conversation_context = (
+        {
+            "turn_index": 3,
+            "question": "Tell me about a time that you worked on a team",
+            "resolved_question": "Tell me about a time that you worked on a team",
+            "answer": (
+                "I built a sneaker market website with PHP, JavaScript, RapidAPI and Git."
+            ),
+            "topic_lock_turn_index": 3,
+        },
+    )
+    service = AnswerService(AppConfig(answer_provider="local"), chunks)
+    cleaned, context, prompt = service._prepare(
+        "What was the tech stack?",
+        "concise",
+        conversation_context,
+    )
+
+    assert cleaned == "What was the tech stack?"
+    assert [item.title for item in context] == ["Sneaker project"]
+    assert "ACTIVE TOPIC LOCK" in prompt
+    assert "Rizka Travel" not in prompt
+
+
 def test_local_answer_uses_context_without_api() -> None:
     service = AnswerService(AppConfig(answer_provider="local"), CONTEXT)
     result = service.generate("Can you describe your Python invoice project?")
@@ -173,7 +209,7 @@ def test_gemini_streams_stateless_text_deltas(monkeypatch) -> None:
     assert provider.generate("Tell me about yourself") == "First answer."
     assert models.request["model"] == "gemini-3.5-flash"
     assert "Tell me about yourself" in models.request["contents"]
-    assert "interview practice" in models.request["config"]["system_instruction"]
+    assert "conversation, meeting and interview coach" in models.request["config"]["system_instruction"]
     assert models.request["config"]["max_output_tokens"] == 800
     assert client.closed
 

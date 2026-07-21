@@ -127,3 +127,30 @@ def test_noisy_tail_keeps_question_bold_and_auto_answers_reconstructed_question(
     assert "both now and in the future" in answers[0].lower()
     app.processEvents()
     controller.shutdown()
+
+
+def test_fragmented_question_shows_clarification_and_skips_auto_generation(tmp_path) -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    config = AppConfig(auto_generate=True, save_transcripts=False)
+    controller = SessionController(
+        Database(tmp_path / "session.db"),
+        ConfigStore(tmp_path / "settings.json"),
+        config,
+    )
+    answers = []
+    clarifications = []
+    controller.ask = lambda question, style=None: answers.append(question)
+    controller.clarification_needed.connect(
+        lambda question, message: clarifications.append((question, message))
+    )
+
+    controller._question_parts[:] = [
+        "Did you create for the application for the website?"
+    ]
+    controller._commit_pending_question(auto_generate=True)
+
+    assert answers == []
+    assert clarifications
+    assert "repeat or rephrase" in clarifications[0][1]
+    controller.shutdown()
+    app.processEvents()

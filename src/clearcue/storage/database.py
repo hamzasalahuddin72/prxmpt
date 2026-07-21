@@ -60,6 +60,7 @@ class SessionTurn:
     follow_up_reason: str
     relevance_status: str
     relevance_reason: str
+    gate_metadata: dict[str, Any] = field(default_factory=dict)
     context: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     novelty_status: str = "unchecked"
     novelty_metadata: dict[str, Any] = field(default_factory=dict)
@@ -168,6 +169,7 @@ class Database:
                     follow_up_reason TEXT NOT NULL DEFAULT '',
                     relevance_status TEXT NOT NULL DEFAULT 'unknown',
                     relevance_reason TEXT NOT NULL DEFAULT '',
+                    gate_metadata_json TEXT NOT NULL DEFAULT '{}',
                     context_json TEXT NOT NULL DEFAULT '[]',
                     novelty_status TEXT NOT NULL DEFAULT 'unchecked',
                     novelty_metadata_json TEXT NOT NULL DEFAULT '{}',
@@ -216,6 +218,12 @@ class Database:
                 "session_turns",
                 "follow_up_reason",
                 "TEXT NOT NULL DEFAULT ''",
+            )
+            self._ensure_column(
+                connection,
+                "session_turns",
+                "gate_metadata_json",
+                "TEXT NOT NULL DEFAULT '{}'",
             )
         self.ensure_default_profile()
 
@@ -512,6 +520,7 @@ class Database:
         follow_up_reason: str = "",
         relevance_status: str = "unknown",
         relevance_reason: str = "",
+        gate_metadata: Mapping[str, Any] | None = None,
         context: Iterable[Mapping[str, Any]] = (),
     ) -> int:
         """Create the next ordered turn without changing legacy answer flow."""
@@ -523,6 +532,7 @@ class Database:
             [dict(item) for item in context],
             sort_keys=True,
         )
+        gate_metadata_json = json.dumps(dict(gate_metadata or {}), sort_keys=True)
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             if follow_up_of_turn_id is not None:
@@ -542,8 +552,8 @@ class Database:
                 INSERT INTO session_turns(
                     session_id, turn_index, created_at, question, resolved_question,
                     follow_up_of_turn_id, follow_up_reason, relevance_status,
-                    relevance_reason, context_json
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    relevance_reason, gate_metadata_json, context_json
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
@@ -555,6 +565,7 @@ class Database:
                     follow_up_reason.strip(),
                     relevance_status.strip() or "unknown",
                     relevance_reason.strip(),
+                    gate_metadata_json,
                     context_json,
                 ),
             )
@@ -568,6 +579,7 @@ class Database:
         answer: str | None = None,
         relevance_status: str | None = None,
         relevance_reason: str | None = None,
+        gate_metadata: Mapping[str, Any] | None = None,
         context: Iterable[Mapping[str, Any]] | None = None,
         novelty_status: str | None = None,
         novelty_metadata: Mapping[str, Any] | None = None,
@@ -583,6 +595,10 @@ class Database:
             updates["relevance_status"] = relevance_status.strip() or "unknown"
         if relevance_reason is not None:
             updates["relevance_reason"] = relevance_reason.strip()
+        if gate_metadata is not None:
+            updates["gate_metadata_json"] = json.dumps(
+                dict(gate_metadata), sort_keys=True
+            )
         if context is not None:
             updates["context_json"] = json.dumps(
                 [dict(item) for item in context], sort_keys=True
@@ -611,7 +627,8 @@ class Database:
         query = """
             SELECT id, session_id, turn_index, created_at, question, resolved_question,
                    answer, follow_up_of_turn_id, relevance_status, relevance_reason,
-                   follow_up_reason, context_json, novelty_status, novelty_metadata_json
+                   follow_up_reason, gate_metadata_json, context_json, novelty_status,
+                   novelty_metadata_json
             FROM session_turns WHERE session_id = ? ORDER BY turn_index
         """
         parameters: list[Any] = [session_id]
@@ -625,6 +642,7 @@ class Database:
         turns: list[SessionTurn] = []
         for row in rows:
             context = self._decode_json_list(row["context_json"])
+            gate_metadata = self._decode_json_object(row["gate_metadata_json"])
             metadata = self._decode_json_object(row["novelty_metadata_json"])
             turns.append(
                 SessionTurn(
@@ -643,6 +661,7 @@ class Database:
                     follow_up_reason=str(row["follow_up_reason"]),
                     relevance_status=str(row["relevance_status"]),
                     relevance_reason=str(row["relevance_reason"]),
+                    gate_metadata=gate_metadata,
                     context=tuple(context),
                     novelty_status=str(row["novelty_status"]),
                     novelty_metadata=metadata,

@@ -6,8 +6,8 @@ from typing import Any
 from clearcue.intelligence.retriever import RetrievedChunk
 
 
-SYSTEM_INSTRUCTIONS = """You are prxmpt, an interview practice and disclosed meeting coach.
-Produce a natural first-person answer that the user can adapt and speak.
+SYSTEM_INSTRUCTIONS = """You are prxmpt, a disclosed conversation, meeting and interview coach.
+Produce a natural spoken response that the user can adapt and say aloud.
 
 Grounding rules:
 - Use only facts present in the supplied context.
@@ -16,15 +16,15 @@ Grounding rules:
 - Use STAR structure only when the question calls for a behavioural example.
 - Keep the language natural, specific and easy to say aloud.
 - Do not claim to have personally completed work unless the context supports it.
-- Treat the interview transcript as potentially noisy: follow the reconstructed question,
+- Treat the transcript as potentially noisy: follow the resolved question,
   ignore duplicated phrases and preserve its important premise or trade-off.
 - Never output square-bracket placeholders, a template, coaching commentary, or phrases such
   as "I need more information" and "I would need to know".
-- If role or organisation details are absent, use verified candidate experience plus neutral
+- If role or organisation details are absent, use verified user experience plus neutral
   wording such as "this role". Do not invent company-specific reasons.
 - For a hypothetical choice or trade-off, state a credible decision clearly, then explain the
   criteria, commitment and communication behind it.
-- Return only the answer the candidate could actually say aloud.
+- Return only the answer the user could actually say aloud.
 """
 
 
@@ -55,11 +55,12 @@ def build_prompt(
         if conversation_text
         else ""
     )
+    lock_section = _topic_lock_text(conversation_context)
     return (
-        f"RECONSTRUCTED INTERVIEW QUESTION\n{question.strip()}\n\n"
+        f"RESOLVED QUESTION\n{question.strip()}\n\n"
         f"ANSWER STYLE\n{style_rule}\n\n"
-        f"VERIFIED CANDIDATE CONTEXT\n{context_text}"
-        f"{conversation_section}\n\n"
+        f"VERIFIED USER CONTEXT\n{context_text}"
+        f"{conversation_section}{lock_section}\n\n"
         "ANSWER REQUIREMENTS\n"
         "Give a direct, confident first-person response. Use concrete facts from the context "
         "when available. Do not mention the context, missing information, placeholders, or "
@@ -81,3 +82,24 @@ def _conversation_text(
             f"TURN {turn_index}\nQUESTION: {question}\nANSWER: {answer or '(pending)'}"
         )
     return "\n\n".join(entries)
+
+
+def _topic_lock_text(
+    conversation_context: Sequence[Mapping[str, Any]],
+) -> str:
+    locks = {
+        item.get("topic_lock_turn_index")
+        for item in conversation_context
+        if item.get("topic_lock_turn_index") is not None
+    }
+    if len(locks) != 1:
+        return ""
+    lock = next(iter(locks))
+    return (
+        "\n\nACTIVE TOPIC LOCK\n"
+        f"Continue only the topic established in turn {lock}. Use only its verified "
+        "facts and the locked rolling context. Do not switch to another project, person, "
+        "employer, meeting subject or source unless the resolved question explicitly does so. "
+        "If the requested detail is not verified for this topic, say so briefly rather than "
+        "substituting a similar fact from another topic."
+    )

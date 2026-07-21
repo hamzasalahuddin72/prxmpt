@@ -87,7 +87,16 @@ class AnswerService:
         cleaned = " ".join(question.split())
         if not cleaned:
             raise ValueError("Enter or detect a question first.")
-        context = self.retriever.retrieve(cleaned, limit=5)
+        topic_query = self._locked_topic_query(conversation_context)
+        context = self.retriever.retrieve(
+            topic_query or cleaned,
+            limit=5,
+            # When a question continues a locked topic, a broad fallback can
+            # pull facts from a different project merely because they share a
+            # word such as "database". The prior answer remains available as
+            # context if no verified source chunk matches the locked topic.
+            allow_fallback=not bool(topic_query),
+        )
         prompt = build_prompt(
             cleaned,
             context,
@@ -95,6 +104,31 @@ class AnswerService:
             conversation_context,
         )
         return cleaned, context, prompt
+
+    @staticmethod
+    def _locked_topic_query(
+        conversation_context: Sequence[Mapping[str, Any]],
+    ) -> str:
+        lock_values = {
+            item.get("topic_lock_turn_index")
+            for item in conversation_context
+            if item.get("topic_lock_turn_index") is not None
+        }
+        if len(lock_values) != 1:
+            return ""
+        lock = next(iter(lock_values))
+        locked_parts: list[str] = []
+        for item in conversation_context:
+            if (
+                item.get("turn_index") != lock
+                and item.get("topic_lock_turn_index") != lock
+            ):
+                continue
+            locked_parts.extend(
+                str(item.get(field) or "")
+                for field in ("resolved_question", "question", "answer")
+            )
+        return " ".join(part.strip() for part in locked_parts if part.strip())
 
     @staticmethod
     def _result(
