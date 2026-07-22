@@ -131,6 +131,86 @@ def test_topic_lock_retrieves_only_the_active_project_context() -> None:
     assert "Rizka Travel" not in prompt
 
 
+def test_hard_topic_boundary_excludes_similar_multi_project_resume_evidence() -> None:
+    """Regression: a locked team-project follow-up must not retrieve Rizka facts.
+
+    The old lookup returned both entries because they share PHP and JavaScript.
+    In a real provider prompt that gave the model enough unrelated evidence to
+    answer the locked project question with the Rizka Travel example.
+    """
+
+    chunks = [
+        (
+            "Master resume",
+            "Junior Developer | Rizka Travel. Developed and maintained internal "
+            "invoicing software using PHP, MySQL and JavaScript to manage booking, "
+            "client, payment and invoice records.",
+        ),
+        (
+            "Master resume",
+            "Team E-Commerce Web Application | PHP, JavaScript, RapidAPI.",
+        ),
+        (
+            "Frontend role description",
+            "The frontend web developer will build accessible HTML and CSS "
+            "components for a remote platform.",
+        ),
+    ]
+    conversation_context = (
+        {
+            "turn_index": 7,
+            "question": "Tell me about a time that you worked on a team",
+            "resolved_question": "Tell me about a time that you worked on a team",
+            "answer": (
+                "I worked on a sneaker-market website in a six-person Agile team "
+                "using PHP, JavaScript, RapidAPI and Git."
+            ),
+            "topic_lock_turn_index": 7,
+        },
+    )
+    service = AnswerService(AppConfig(answer_provider="local"), chunks)
+
+    _cleaned, evidence, prompt = service._prepare(
+        "What was your role and what was the outcome?",
+        "concise",
+        conversation_context,
+    )
+
+    assert len(evidence) == 1
+    assert "RapidAPI" in evidence[0].content
+    assert "Rizka Travel" not in evidence[0].content
+    assert "invoicing" not in prompt
+    assert "HARD EVIDENCE BOUNDARY" in prompt
+    assert prompt.index("LOCKED TURN FACTS") < prompt.index("LOCKED VERIFIED EVIDENCE")
+
+
+def test_locked_lookup_uses_no_broad_fallback_when_topic_has_no_proven_anchor() -> None:
+    service = AnswerService(
+        AppConfig(answer_provider="local"),
+        [
+            ("Profile", "Built an invoice application using Python and SQLite."),
+            ("Profile", "Developed a website using PHP and JavaScript."),
+        ],
+    )
+    conversation_context = (
+        {
+            "turn_index": 1,
+            "question": "Tell me about the work",
+            "answer": "I helped the team deliver it on time.",
+            "topic_lock_turn_index": 1,
+        },
+    )
+
+    _cleaned, evidence, prompt = service._prepare(
+        "What happened next?",
+        "concise",
+        conversation_context,
+    )
+
+    assert evidence == []
+    assert "No relevant personal context was found." in prompt
+
+
 def test_local_answer_uses_context_without_api() -> None:
     service = AnswerService(AppConfig(answer_provider="local"), CONTEXT)
     result = service.generate("Can you describe your Python invoice project?")

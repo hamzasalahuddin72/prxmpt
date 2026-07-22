@@ -34,6 +34,34 @@ foundation patch, not a release-version bump yet.
 - Added regression coverage from real mock-interview transcripts, including the
   role/outcome continuation and “text tag” → “tech stack” correction.
 
+## Patch 3.1 — locked-topic evidence boundary
+
+- Replaced prompt-only topic locking with a hard evidence boundary before any
+  provider is called.
+- Locked follow-ups now retrieve only source chunks containing distinctive
+  anchors from the locked conversation topic; broad lexical matches such as
+  "team", "PHP", "JavaScript" or "database" cannot admit a similar but
+  unrelated project.
+- Focused matched source chunks to anchor-bearing sentences where a chunk spans
+  more than one subject, reducing cross-project fact leakage further.
+- Moved the locked turn facts ahead of source evidence in every provider prompt
+  and explicitly marks the lock as authoritative.
+- Added a realistic multi-project resume regression: a six-person sneaker-site
+  follow-up can retrieve the RapidAPI/Git project evidence but cannot retrieve
+  the Rizka Travel invoicing evidence.
+- Added a conservative no-anchor regression: when the lock cannot be grounded
+  in an uploaded source, no broad fallback context is sent to the provider.
+
+## Patch 3.1.1 — rolling-context prompt hand-off
+
+- Fixed a prompt-construction omission: the compact saved session window is now
+  rendered for ordinary, non-locked follow-ups as `ROLLING SESSION CONTEXT`.
+- Preserved the stricter `ACTIVE TOPIC LOCK — HARD EVIDENCE BOUNDARY` route for
+  locked follow-ups; it continues to take priority over the general context
+  window.
+- This makes the existing follow-up regression for “Why did you choose it?”
+  pass without broadening the evidence available to a locked topic.
+
 ## Deliberately not included yet
 
 - No point-level novelty filtering or answer buffering.

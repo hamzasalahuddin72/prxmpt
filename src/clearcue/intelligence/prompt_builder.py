@@ -24,6 +24,10 @@ Grounding rules:
   wording such as "this role". Do not invent company-specific reasons.
 - For a hypothetical choice or trade-off, state a credible decision clearly, then explain the
   criteria, commitment and communication behind it.
+- When an active topic lock is present, treat it as a hard evidence boundary.
+  Never substitute a similar fact from another project, person, employer or
+  discussion topic. If the locked facts do not establish a requested detail,
+  state that narrowly and naturally rather than guessing.
 - Return only the answer the user could actually say aloud.
 """
 
@@ -50,17 +54,18 @@ def build_prompt(
     else:
         context_text = "No relevant personal context was found."
     conversation_text = _conversation_text(conversation_context)
-    conversation_section = (
-        f"\n\nROLLING SESSION CONTEXT\n{conversation_text}"
-        if conversation_text
-        else ""
+    lock_section = _topic_lock_text(conversation_context, conversation_text)
+    conversation_section = lock_section or _rolling_session_text(conversation_text)
+    context_heading = (
+        "LOCKED VERIFIED EVIDENCE"
+        if lock_section
+        else "VERIFIED USER CONTEXT"
     )
-    lock_section = _topic_lock_text(conversation_context)
     return (
         f"RESOLVED QUESTION\n{question.strip()}\n\n"
         f"ANSWER STYLE\n{style_rule}\n\n"
-        f"VERIFIED USER CONTEXT\n{context_text}"
-        f"{conversation_section}{lock_section}\n\n"
+        f"{conversation_section}"
+        f"{context_heading}\n{context_text}\n\n"
         "ANSWER REQUIREMENTS\n"
         "Give a direct, confident first-person response. Use concrete facts from the context "
         "when available. Do not mention the context, missing information, placeholders, or "
@@ -84,8 +89,27 @@ def _conversation_text(
     return "\n\n".join(entries)
 
 
+def _rolling_session_text(conversation_text: str) -> str:
+    """Render the compact prior-turn window for non-locked continuations.
+
+    A topic lock uses the stricter ``_topic_lock_text`` path below.  Without a
+    lock, the provider still needs the saved, bounded session context to answer
+    ordinary referential follow-ups such as ``Why did you choose it?``.
+    """
+
+    if not conversation_text:
+        return ""
+    return (
+        "ROLLING SESSION CONTEXT\n"
+        "Use this recent conversation only when it helps answer the resolved "
+        "question. Prefer the verified user context for independent questions.\n\n"
+        f"{conversation_text}\n\n"
+    )
+
+
 def _topic_lock_text(
     conversation_context: Sequence[Mapping[str, Any]],
+    conversation_text: str,
 ) -> str:
     locks = {
         item.get("topic_lock_turn_index")
@@ -95,11 +119,11 @@ def _topic_lock_text(
     if len(locks) != 1:
         return ""
     lock = next(iter(locks))
+    facts = conversation_text or "No prior locked facts were saved."
     return (
-        "\n\nACTIVE TOPIC LOCK\n"
-        f"Continue only the topic established in turn {lock}. Use only its verified "
-        "facts and the locked rolling context. Do not switch to another project, person, "
-        "employer, meeting subject or source unless the resolved question explicitly does so. "
-        "If the requested detail is not verified for this topic, say so briefly rather than "
-        "substituting a similar fact from another topic."
+        "ACTIVE TOPIC LOCK — HARD EVIDENCE BOUNDARY\n"
+        f"Continue only the topic established in turn {lock}. The facts below are "
+        "authoritative for this follow-up. Do not use a similar project, person, employer, "
+        "meeting subject or source unless the resolved question explicitly changes topic.\n\n"
+        f"LOCKED TURN FACTS\n{facts}\n\n"
     )
